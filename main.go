@@ -86,9 +86,14 @@ func (e env) ReplaceEnvKeys() env {
 			plen := len(part)
 			if plen > 3 {
 				envKey := part[2 : plen-1]
-				envPart := e[envKey]
-				return envPart
+				if envPart, ok := e[envKey]; ok {
+					return envPart
+				} else {
+					log.Printf(`Replacing the variable failed, env key is unknown: "%s"`, part)
+				}
+				return part
 			}
+			log.Printf(`Replacing the variable failed, env key is empty: "%s"`, part)
 			return part
 		})
 	}
