@@ -18,12 +18,14 @@ const (
 	CommentRx = `^[\s]*#`
 	// NameRx is much tighter than Posix, which accepts anything but NUL and '=',
 	// but laxer than shells, which do not accept dots. Names are assumed to be pre-trimmed.
-	NameRx = `^[[:alpha:]][-._a-zA-Z0-9]*`
+	NameRx          = `^[[:alpha:]][-._a-zA-Z0-9]*`
+	EnvKeyReplaceRx = `\$\{[^}]+\}`
 )
 
 var (
-	commentRx = regexp.MustCompile(CommentRx)
-	nameRx    = regexp.MustCompile(NameRx)
+	commentRx       = regexp.MustCompile(CommentRx)
+	nameRx          = regexp.MustCompile(NameRx)
+	envKeyReplaceRx = regexp.MustCompile(EnvKeyReplaceRx)
 )
 
 type env map[string]string
@@ -72,6 +74,23 @@ func (e env) Merge(f env) env {
 	}
 	for k, v := range f {
 		res[k] = v
+	}
+	return res
+}
+
+// replaces ${ENV_KEY} placeholder in env values
+func (e env) ReplaceEnvKeys() env {
+	res := make(env, len(e))
+	for k, v := range e {
+		res[k] = envKeyReplaceRx.ReplaceAllStringFunc(v, func(part string) string {
+			plen := len(part)
+			if plen > 3 {
+				envKey := part[2 : plen-1]
+				envPart := e[envKey]
+				return envPart
+			}
+			return part
+		})
 	}
 	return res
 }
@@ -138,7 +157,9 @@ func main() {
 	}()
 
 	env := envFromReader(rc)
-	env = env.Merge(envFromEnv())
+	osEnv := envFromEnv()
+	env = osEnv.Merge(env)
+	env = env.ReplaceEnvKeys()
 	toRun := fs.Args()
 	// Length checked during readCloser().
 	name := toRun[0]
