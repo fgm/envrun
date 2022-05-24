@@ -30,6 +30,7 @@ var (
 	varAndDefaultRx = regexp.MustCompile(VarAndDefaultRx)
 )
 
+type options = map[string]any
 type env map[string]string
 
 func envFromEnv() env {
@@ -108,8 +109,6 @@ func (e env) ReplaceEnvKeys(source env) env {
 	}
 	return res
 }
-
-type options = map[string]any
 
 func parseArgs(args []string) (options, *flag.FlagSet, error) {
 	opts := make(map[string]any)
