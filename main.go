@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// CommentRx matches comment lines
+	// CommentRx matches comment lines.
 	CommentRx = `^[\s]*#`
 	// NameRx is much tighter than Posix, which accepts anything but NUL and '=',
 	// but laxer than shells, which do not accept dots. Names are assumed to be pre-trimmed.
@@ -131,8 +131,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer func() {
-		rc.Close()
-		if err != nil {
+		errClose := rc.Close()
+		if err != nil || errClose != nil {
 			os.Exit(exitCode)
 		}
 	}()
@@ -140,12 +140,13 @@ func main() {
 	env := envFromReader(rc)
 	env = env.Merge(envFromEnv())
 	toRun := fs.Args()
-	// Length checked during readCloser().
+	// Length was checked during readCloser().
 	name := toRun[0]
 	if err := run(env, name, toRun[1:]); err == nil {
 		return
 	}
-	exit, ok := err.(*exec.ExitError)
+	var exit *exec.ExitError
+	ok := errors.As(err, &exit)
 	if !ok {
 		log.Printf("non-exit error running %s: %v", name, err)
 		exitCode = 1
