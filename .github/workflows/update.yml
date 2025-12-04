@@ -1,0 +1,76 @@
+name: Update
+
+env:
+  GO_VERSION: 1.24
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 1-7 * 6" # 2am UTC, monthly on the first Saturday of each month
+
+permissions:
+  contents: read
+
+jobs:
+  dep_update:
+    permissions:
+      contents: write  # for peter-evans/create-pull-request to create branch
+      pull-requests: write  # for peter-evans/create-pull-request to create a PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+        with:
+          egress-policy: audit
+
+      - name: Install Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Update minor and patch-level dependencies
+        run: go get -t -u ./...
+
+      - name: Tidy
+        run: go mod tidy
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          title: "Update package dependencies + tidy"
+          body: |
+            This is a change initiated automatically on a monthly basis by a
+            GitHub Action that updates the projects dependencies to their latest
+            minor and patch-level versions. This lets us stay up to date
+            incrementally so that updates are less effort to get merged compared
+            to large monolithic updates, and gets us security updates more
+            expediently.
+
+            If the build passes, you are probably A-OK to merge and deploy this.
+            If not, try to dig into what's not working and see if you can fix it
+            so that the dep train stays on its rails.
+
+            Note that although minor/patch level changes are handled
+            automatically, notably major version changes like you'd find in
+            stripe-go are not and those upgrades need to be performed manually.
+            That should theoretically not be a problem if fixes are backported
+            to all previous majors, but in practice they are often not, so it's
+            worthwhile to occasionally look for new majors and integrate them.
+          branch: "dep-update"
+          commit-message: |
+            Update package dependencies + tidy
+
+            Weekly update to the project's package dependencies initiated by an
+            automatic GitHub Action running on cron. Keeps upgrades less of a
+            monolithic task and lets security-related patches trickle in more
+            quickly.
+          author: "OSInet Support Bot <support@osinet.fr>"
+          committer: "OSInet Support Bot <support@osinet.fr>"
+          delete-branch: true
+          reviewers: |
+            fgm

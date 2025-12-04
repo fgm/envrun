@@ -1,5 +1,10 @@
 # envrun
 
+[![GoDoc](https://pkg.go.dev/badge/github.com/fgm/envrun)](https://pkg.go.dev/github.com/fgm/envrun)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fgm/envrun)](https://goreportcard.com/report/github.com/fgm/envrun)
+[![github](https://github.com/fgm/container/actions/workflows/workflow.yml/badge.svg)](https://github.com/fgm/container/actions/workflows/workflow.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fgm/envrun/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fgm/envrun)
+
 The `envrun` command allows running any command with default environment
 variables taken from a file, copying its standard error and standard output to
 its own standard error and standard output.
