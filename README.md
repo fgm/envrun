@@ -19,6 +19,10 @@ name does not contain a `/`.
 
 Install from source, using a Go SDK: `go install github.com/fgm/envrun@latest`
 
+Or, better, add as a tool to your project: `go get -tool github.com/fgm/envrun@latest`
+
+Then use as such: `go tool github.com/fgm/envrun <myprogram>`
+
 
 ## Running
 ### Examples
