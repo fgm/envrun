@@ -150,7 +150,8 @@ func main() {
 	if !ok {
 		log.Printf("non-exit error running %s: %v", name, err)
 		exitCode = 1
+	} else {
+		log.Printf("exit error running %s: %v", name, err)
+		exitCode = exit.ExitCode()
 	}
-	log.Printf("exit error running %s: %v", name, err)
-	exitCode = exit.ExitCode()
 }
