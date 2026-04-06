@@ -1,0 +1,27 @@
+name: Check first Saturday of month
+
+permissions: {}
+
+on:
+  workflow_call:
+    outputs:
+      is-first-saturday:
+        description: "'true' if today is the first Saturday of the month"
+        value: ${{ jobs.check.outputs.is-first-saturday }}
+
+jobs:
+  check:
+    name: Check first Saturday of month
+    runs-on: ubuntu-latest
+    outputs:
+      is-first-saturday: ${{ steps.check.outputs.is-first-saturday }}
+    steps:
+      - name: Check if today is the first Saturday of the month
+        id: check
+        run: |
+          day=$(date +%-d)
+          if [ "$day" -le 7 ]; then
+            echo "is-first-saturday=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-first-saturday=false" >> "$GITHUB_OUTPUT"
+          fi

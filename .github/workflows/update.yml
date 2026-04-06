@@ -1,18 +1,23 @@
 name: Update
 
 env:
-  GO_VERSION: 1.24
+  GO_VERSION: 1.26
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 1-7 * 6" # 2am UTC, monthly on the first Saturday of each month
+    - cron: "0 2 * * 6" # 2am UTC every Saturday; first-Saturday check is in the job condition
 
 permissions:
   contents: read
 
 jobs:
+  check-schedule:
+    uses: ./.github/workflows/check-first-saturday.yml
+
   dep_update:
+    needs: check-schedule
+    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-saturday == 'true'
     permissions:
       contents: write  # for peter-evans/create-pull-request to create branch
       pull-requests: write  # for peter-evans/create-pull-request to create a PR
