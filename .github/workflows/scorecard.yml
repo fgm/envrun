@@ -4,13 +4,14 @@
 
 name: Scorecard supply-chain security
 on:
+  workflow_dispatch:
   # For Branch-Protection check. Only the default branch is supported. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
   branch_protection_rule:
   # To guarantee Maintained check is occasionally updated. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
-    - cron: '44 20 1-7 * 4'
+    - cron: '0 6 * * 6' # 06:00 UTC every Saturday; first-Saturday check is in the job condition
   push:
     branches: [ "main" ]
 
@@ -18,8 +19,13 @@ on:
 permissions: read-all
 
 jobs:
+  check-schedule:
+    uses: ./.github/workflows/check-first-saturday.yml
+
   analysis:
     name: Scorecard analysis
+    needs: check-schedule
+    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-saturday == 'true'
     runs-on: ubuntu-latest
     permissions:
       # Needed to upload the results to code-scanning dashboard.

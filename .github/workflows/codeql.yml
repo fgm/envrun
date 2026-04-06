@@ -12,6 +12,7 @@
 name: "CodeQL Advanced"
 
 on:
+  workflow_dispatch:
   # For Branch-Protection check. Only the default branch is supported. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
   #branch_protection_rule:
@@ -23,15 +24,20 @@ on:
   # To guarantee Maintained check is occasionally updated. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
-    - cron: '45 6 1-7 * 6'
+    - cron: '0 4 * * 6'
 
-# Declare default permissions as read only.
+# Declare default permissions as read-only.
 permissions:
   contents: read
 
 jobs:
+  check-schedule:
+    uses: ./.github/workflows/check-first-saturday.yml
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: check-schedule
+    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-saturday == 'true'
     # Runner size impacts CodeQL analysis time. To learn more, please see:
     #   - https://gh.io/recommended-hardware-resources-for-running-codeql
     #   - https://gh.io/supported-runners-and-hardware-resources
@@ -83,7 +89,7 @@ jobs:
       - name: Set up required Go version
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24
+          go-version: 1.26
 
       - name: Ensure actual Go version
         run: go version
