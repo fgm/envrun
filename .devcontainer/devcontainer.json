@@ -1,0 +1,34 @@
+{
+  // envrun dev container: an editor-agnostic Go dev environment that also
+  // dogfoods envrun itself. See ./README.md for what each part demonstrates.
+  "name": "envrun",
+
+  // Prebuilt Go dev-container image: the Go toolchain arrives baked in via the
+  // registry pull. We deliberately do NOT use the base image + Go *feature*
+  // here: the feature fetches the toolchain from go.googlesource.com at build
+  // time, which fails behind a TLS-inspecting corporate proxy (e.g. Netskope)
+  // when the container's trust store lacks the proxy CA. A prebuilt image needs
+  // no such fetch, so it works both in plain and proxied environments.
+  // Tag tracks Go 1.25.x (>= go.mod's `go 1.25.8`); GOTOOLCHAIN handles the rest.
+  "image": "mcr.microsoft.com/devcontainers/go:1.25-bookworm",
+
+  // Lifecycle hook: runs once after the container is created, with the source
+  // tree mounted. It fetches deps and then runs envrun on itself via the repo's
+  // own `make demo` target (LOCAL=demo go run . -f .env.demo env | sort), so the
+  // act of creating the container demonstrates the tool working (visible in the
+  // create log). `make lint` (go tool staticcheck) and `make test` also work
+  // in-container with no extra setup.
+  "postCreateCommand": "go mod download && make demo",
+
+  // Editor setup the workspace declares for whatever client attaches.
+  // `customizations` is namespaced per tool: each editor reads ONLY its own
+  // block and ignores the others, so a single spec configures every client.
+  "customizations": {
+    // VS Code: install the Go extension into the in-container editor server.
+    "vscode": { "extensions": ["golang.go"] },
+    // JetBrains (GoLand / Gateway): `backend` selects which JetBrains IDE
+    // backend runs inside the container - GoLand for a Go repo. `plugins`
+    // (marketplace IDs) and `settings` could also go here. VS Code ignores this.
+    "jetbrains": { "backend": "GoLand" }
+  }
+}
