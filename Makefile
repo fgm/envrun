@@ -19,10 +19,15 @@ GOBIN := $(if $(_RAW_GOBIN),$(_RAW_GOBIN),$(firstword $(subst :, ,$(subst ;, ,$(
 demo:
 	LOCAL=demo $(GO) run . -f .env.demo env | sort
 
-.PHONY: build clean cover install lint test
+.PHONY: build clean cover install lint modernize test
 
-lint:
+lint: modernize
 	$(GO) tool staticcheck -checks=all $(PACKAGES)
+
+# go fix exits non-zero when fixes are pending, and prints them as a patch,
+# so a failure here already says what to apply.
+modernize:
+	$(GO) fix -diff $(PACKAGES)
 
 cover:
 	mkdir -p $(COVERDIR)

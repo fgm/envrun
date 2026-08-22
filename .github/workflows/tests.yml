@@ -25,7 +25,10 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: 1.27
+        go-version-file: go.mod
+
+    - name: Lint
+      run: make lint
 
     - name: Test and cover
       # We don't need the benchmarks to run for long, just enough for coverage.
@@ -39,6 +42,6 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: true
-        verbose: true
+        verbose: false
         directory: ./coverage
         env_vars: OS

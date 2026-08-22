@@ -34,8 +34,29 @@ Then use as such: `go tool github.com/fgm/envrun <myprogram>`
 
 ### Exit status
 
-- If the command exits, `envrun` will return its exit status
-- If the command is killed, `envrun` will return exit status 1
+`envrun` passes the command's own exit status through unchanged
+whenever the command actually ran and exited.
+
+For its own failures it follows the convention used by coreutils
+`env`, `timeout` and `nohup`, which keeps them out of the range a command is likely to use:
+
+- `125`: `envrun` itself failed, so the command's own status is unknown —
+  the environment file could not be read, no command was given,
+  or the command ran but its outcome could not be collected
+- `126`: the command exists but could not be executed
+- `127`: the command could not be found
+
+Two cases remain ambiguous, and both are unavoidable:
+
+- a command which itself exits `125`, `126` or `127` is indistinguishable from
+  the cases above
+- a command killed by a signal has no exit status of its own,
+  so `envrun` reports `1`
+
+Standard error tells the cases apart:
+`envrun` is silent on success,
+reports the command's own failure as `<command> exited with status <n>`,
+and prefixes its own failures with `failed`.
 
 
 ## Why ?
