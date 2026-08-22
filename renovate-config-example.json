@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "repositories": [
+    "fgm/envrun",
+    "fgm/untilMongod",
+    "fgm/container",
+    "fgm/drupal_redis_stats",
+    "fgm/izidic",
+    "fgm/pflagheaders"
+  ],
+  "enabledManagers": ["gomod", "github-actions", "npm"],
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "groupName": "Go dependencies",
+      "groupSlug": "go-deps",
+      "updateTypes": ["minor", "patch"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPaths": ["examples/**"],
+      "groupName": "npm dependencies",
+      "groupSlug": "npm-deps"
+    }
+  ],
+  "repositoryRules": [
+    {
+      "matchRepositoryNames": ["fgm/pflagheaders"],
+      "schedule": ["before 3am on Monday"]
+    },
+    {
+      "matchRepositoryNames": ["fgm/envrun", "fgm/container"],
+      "schedule": ["before 3am on the first Saturday"]
+    },
+    {
+      "matchRepositoryNames": ["fgm/untilMongod"],
+      "schedule": ["before 3am on the 1st of the month"]
+    },
+    {
+      "matchRepositoryNames": ["fgm/drupal_redis_stats", "fgm/izidic"],
+      "schedule": ["before 3am on Monday"],
+      "enabledManagers": ["gomod"]
+    }
+  ]
+}
