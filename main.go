@@ -6,12 +6,28 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	iofs "io/fs"
 	"log"
 	"maps"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"syscall"
+)
+
+// Exit statuses for envrun's own failures.
+//
+// They follow the convention used by similar coreutils commands: env, timeout and nohup.
+// The command's own status is passed through unchanged,
+// so a caller can only confuse the two when the command itself exits 125 to 127.
+const (
+	// ExitEnvrun reports that envrun failed before the command could run.
+	ExitEnvrun = 125
+	// ExitNotInvocable reports that the command exists but could not be executed.
+	ExitNotInvocable = 126
+	// ExitNotFound reports that the command could not be found.
+	ExitNotFound = 127
 )
 
 const (
@@ -75,7 +91,8 @@ func (e env) Merge(f env) env {
 	return res
 }
 
-func readCloser(args []string) (io.ReadCloser, *flag.FlagSet, error) {
+// openEnv parses the command-line flags and opens the environment file.
+func openEnv(args []string) (io.ReadCloser, *flag.FlagSet, error) {
 	if len(args) < 2 {
 		return nil, nil, errors.New("need at least a command to run")
 	}
@@ -89,7 +106,7 @@ func readCloser(args []string) (io.ReadCloser, *flag.FlagSet, error) {
 	}
 	inFile, err := os.Open(*inName)
 	if err != nil {
-		return nil, fs, fmt.Errorf("failed reading %s: %v", *inName, err)
+		return nil, nil, fmt.Errorf("failed reading %s: %w", *inName, err)
 	}
 	return inFile, fs, nil
 }
@@ -103,16 +120,16 @@ func run(env env, name string, args []string) error {
 	cmd.Env = fEnv
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("failed acquiring %s standard output: %v", name, err)
+		return fmt.Errorf("failed acquiring %s standard output: %w", name, err)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("failed acquiring %s standard error: %v", name, err)
+		return fmt.Errorf("failed acquiring %s standard error: %w", name, err)
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("failed starting %s: %v", name, err)
+		return fmt.Errorf("failed starting %s: %w", name, err)
 	}
 	go io.Copy(os.Stdout, stdout)
 	go io.Copy(os.Stderr, stderr)
@@ -121,36 +138,55 @@ func run(env env, name string, args []string) error {
 }
 
 func main() {
-	var (
-		err      error
-		exitCode int
-	)
-	rc, fs, err := readCloser(os.Args)
+	os.Exit(realMain(os.Args))
+}
+
+// realMain runs the command and returns the process exit status.
+//
+// It returns the child's own status where the child ran and exited,
+// and 1 for any envrun-level failure.
+// A child killed by a signal has no exit status of its own,
+// so it reports 1, as documented in the README.
+func realMain(args []string) int {
+	rc, flags, err := openEnv(args)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return ExitEnvrun
 	}
 	defer func() {
-		errClose := rc.Close()
-		if err != nil || errClose != nil {
-			os.Exit(exitCode)
+		if err := rc.Close(); err != nil {
+			log.Printf("failed closing environment file: %v", err)
 		}
 	}()
 
-	env := envFromReader(rc)
-	env = env.Merge(envFromEnv())
-	toRun := fs.Args()
-	// Length was checked during readCloser().
+	e := envFromReader(rc).Merge(envFromEnv())
+	toRun := flags.Args()
+	// Length was checked during openEnv().
 	name := toRun[0]
-	if err := run(env, name, toRun[1:]); err == nil {
-		return
+
+	err = run(e, name, toRun[1:])
+	if err == nil {
+		return 0
 	}
-	var exit *exec.ExitError
-	ok := errors.As(err, &exit)
-	if !ok {
-		log.Printf("non-exit error running %s: %v", name, err)
-		exitCode = 1
-	} else {
-		log.Printf("exit error running %s: %v", name, err)
-		exitCode = exit.ExitCode()
+
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		code := exit.ExitCode()
+		if code < 0 {
+			// A signalled command has no exit status of its own. See issue #35.
+			log.Printf("%s was killed: %v", name, err)
+			return 1
+		}
+		log.Printf("%s exited with status %d", name, code)
+		return code
+	}
+
+	log.Printf("failed running %s: %v", name, err)
+	switch {
+	case errors.Is(err, exec.ErrNotFound):
+		return ExitNotFound
+	case errors.Is(err, iofs.ErrPermission), errors.Is(err, syscall.ENOEXEC):
+		return ExitNotInvocable
+	default:
+		return ExitEnvrun
 	}
 }
