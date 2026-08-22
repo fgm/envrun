@@ -1,8 +1,7 @@
 # envrun
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/fgm/envrun)](https://pkg.go.dev/github.com/fgm/envrun)
-[![Go Report Card](https://goreportcard.com/badge/github.com/fgm/envrun)](https://goreportcard.com/report/github.com/fgm/envrun)
-[![github](https://github.com/fgm/container/actions/workflows/workflow.yml/badge.svg)](https://github.com/fgm/container/actions/workflows/workflow.yml)
+[![CI](https://github.com/fgm/envrun/actions/workflows/tests.yml/badge.svg)](https://github.com/fgm/envrun/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/fgm/envrun/branch/main/graph/badge.svg?token=8YYX1B720M)](https://codecov.io/gh/fgm/envrun)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fgm/envrun/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fgm/envrun)
 
