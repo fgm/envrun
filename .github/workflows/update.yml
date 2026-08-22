@@ -1,7 +1,7 @@
 name: Update
 
 env:
-  GO_VERSION: 1.26
+  GO_VERSION: 1.27
 
 on:
   workflow_dispatch:
@@ -39,7 +39,11 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Update minor and patch-level dependencies
-        run: go get -t -u ./...
+        run: |
+          # "./..." matches only packages in the main module, which never
+          # imports the tools, so tool dependencies need their own pattern.
+          go get -t -u ./...
+          go get -u tool
 
       - name: Tidy
         run: go mod tidy

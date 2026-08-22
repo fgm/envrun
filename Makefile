@@ -1,3 +1,8 @@
+# Stays on Make, no value in moving to Just.
+#
+# A public repo also pays twice: contributors need a new tool, and CI,
+# which pins every action to a SHA, gains unpinned supply-chain surface.
+
 all: lint build
 
 GO       := go
@@ -17,7 +22,7 @@ demo:
 .PHONY: build clean cover install lint test
 
 lint:
-	$(GO) tool staticcheck $(PACKAGES)
+	$(GO) tool staticcheck -checks=all $(PACKAGES)
 
 cover:
 	mkdir -p $(COVERDIR)
