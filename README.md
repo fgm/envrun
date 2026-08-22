@@ -64,6 +64,27 @@ reports the command's own failure as `<command> exited with status <n>`,
 and prefixes its own failures with `failed`.
 
 
+## Dependencies
+
+`envrun` has none at build or run time: it uses only the standard library.
+The authoritative check is the build information embedded in the binary,
+which lists one `dep` line per linked module:
+
+```console
+$ go version -m $(which envrun)
+/path/to/envrun: go1.27.0
+	path	github.com/fgm/envrun
+	mod	github.com/fgm/envrun	v0.0.0-...
+	build	...
+```
+
+No `dep` lines means no dependencies.
+
+The modules in `go.mod` belong to `staticcheck`, required by the `tool`
+directive for linting. They are not linked into the command, but GitHub's
+dependency graph reads `go.mod` rather than the build graph, so its SBOM
+reports them anyway.
+
 ## Why ?
 
 Many programs support reading their environment from a `.env` file, and many IDEs
