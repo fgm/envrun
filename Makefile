@@ -16,10 +16,23 @@ _RAW_GOBIN  := $(shell $(GO) env GOBIN)
 _RAW_GOPATH := $(shell $(GO) env GOPATH)
 GOBIN := $(if $(_RAW_GOBIN),$(_RAW_GOBIN),$(firstword $(subst :, ,$(subst ;, ,$(_RAW_GOPATH))))/bin)
 
-demo:
-	LOCAL=demo $(GO) run . -f .env.demo env | sort
+# The demo file is generated from the fixtures the tests assert against,
+# so the two cannot drift: what the demo shows is what the suite pins down.
+# Globbing rather than listing them means a new fixture needs no edit here,
+# and the test suite checks that every fixture is named for the outcome it expects.
+DEMO_ENV := .env.demo
 
-.PHONY: build clean cover install lint modernize test
+# Only the demo's own variables are shown: "env" prints the whole environment,
+# so an unfiltered demo leaks whatever secrets the caller happens to export.
+demo: $(DEMO_ENV)
+	@sed -nE 's/^[[:space:]]*([^#=[:space:]][^=]*[^=[:space:]]|[^#=[:space:]])[[:space:]]*=.*/^\1=/p' $(DEMO_ENV) > $(DEMO_ENV).names
+	@LOCAL=demo $(GO) run . -f $(DEMO_ENV) env | grep -f $(DEMO_ENV).names | sort
+	@rm -f $(DEMO_ENV).names
+
+$(DEMO_ENV): $(wildcard testdata/pass-*.env)
+	cat $^ > $@
+
+.PHONY: build clean cover demo install lint modernize test
 
 lint: modernize
 	$(GO) tool staticcheck -checks=all $(PACKAGES)
@@ -48,4 +61,4 @@ install: build
 
 clean:
 	@echo GOBIN: $(GOBIN)
-	rm -fr $(COVERDIR) envrun $(GOBIN)/envrun
+	rm -fr $(COVERDIR) $(DEMO_ENV) envrun $(GOBIN)/envrun

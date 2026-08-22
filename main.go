@@ -11,39 +11,9 @@ import (
 	"maps"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"syscall"
 )
-
-// Exit statuses for envrun's own failures.
-//
-// They follow the convention used by similar coreutils commands: env, timeout and nohup.
-// The command's own status is passed through unchanged,
-// so a caller can only confuse the two when the command itself exits 125 to 127.
-const (
-	// ExitEnvrun reports that envrun failed before the command could run.
-	ExitEnvrun = 125
-	// ExitNotInvocable reports that the command exists but could not be executed.
-	ExitNotInvocable = 126
-	// ExitNotFound reports that the command could not be found.
-	ExitNotFound = 127
-)
-
-const (
-	// CommentRx matches comment lines.
-	CommentRx = `^[\s]*#`
-	// NameRx is much tighter than Posix, which accepts anything but NUL and '=',
-	// but laxer than shells, which do not accept dots. Names are assumed to be pre-trimmed.
-	NameRx = `^[[:alpha:]][-._a-zA-Z0-9]*`
-)
-
-var (
-	commentRx = regexp.MustCompile(CommentRx)
-	nameRx    = regexp.MustCompile(NameRx)
-)
-
-type env map[string]string
 
 func envFromEnv() env {
 	e := make(env)
@@ -56,28 +26,52 @@ func envFromEnv() env {
 	return e
 }
 
-func envFromReader(r io.Reader) env {
+// envFromReader parses an environment file.
+//
+// Every line must be blank, a comment, or name=value with a valid name; anything else fails the file.
+// Skipping a malformed line would leave the command running on configuration the operator meant to set,
+// which is worse than not running it at all.
+//
+// It also rejects the multiline quoted values other formats allow:
+// envrun does not interpret quotes, so a value spanning lines cannot be represented,
+// and keeping only its first line would be corruption rather than an omission.
+//
+// Problems are reported by line number rather than content,
+// so a malformed line holding a secret does not reach the logs.
+//
+// A repeated name keeps its last value rather than failing,
+// matching both the usual expectation for this format and Merge, where the later map wins.
+// It is the one silent overwriting left here, and worth a warning once a verbose mode can carry one:
+// see issue #3.
+func envFromReader(r io.Reader) (env, error) {
 	e := make(env)
+	var problems []string
 	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
+	for line := 1; scanner.Scan(); line++ {
 		row := scanner.Text()
-		if commentRx.MatchString(row) {
+		if strings.TrimSpace(row) == "" || commentRx.MatchString(row) {
 			continue
 		}
-		parts := strings.SplitN(row, "=", 2)
-		if len(parts) != 2 {
+		k, v, found := strings.Cut(row, "=")
+		if !found {
+			problems = append(problems, fmt.Sprintf("line %d: not a name=value pair", line))
 			continue
 		}
-		k, v := parts[0], parts[1]
 		k = strings.Trim(k, " \t")
 		v = strings.Trim(v, " \t")
 		if !nameRx.MatchString(k) {
-			log.Printf(`rejected variable: "%s"`, k)
+			problems = append(problems, fmt.Sprintf("line %d: invalid name %q", line, k))
 			continue
 		}
 		e[k] = v
 	}
-	return e
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed reading environment: %w", err)
+	}
+	if len(problems) > 0 {
+		return nil, fmt.Errorf("invalid environment file: %s", strings.Join(problems, "; "))
+	}
+	return e, nil
 }
 
 // Merge combines two env maps.
@@ -137,16 +131,12 @@ func run(env env, name string, args []string) error {
 	return cmd.Wait()
 }
 
-func main() {
-	os.Exit(realMain(os.Args))
-}
-
 // realMain runs the command and returns the process exit status.
 //
-// It returns the child's own status where the child ran and exited,
-// and 1 for any envrun-level failure.
-// A child killed by a signal has no exit status of its own,
-// so it reports 1, as documented in the README.
+// It returns the command's own status where the command ran and exited,
+// and ExitEnvrun, ExitNotInvocable or ExitNotFound where envrun itself failed.
+// A command killed by a signal has no exit status of its own, so it reports 1,
+// as documented in the README.
 func realMain(args []string) int {
 	rc, flags, err := openEnv(args)
 	if err != nil {
@@ -159,7 +149,12 @@ func realMain(args []string) int {
 		}
 	}()
 
-	e := envFromReader(rc).Merge(envFromEnv())
+	fileEnv, err := envFromReader(rc)
+	if err != nil {
+		log.Print(err)
+		return ExitEnvrun
+	}
+	e := fileEnv.Merge(envFromEnv())
 	toRun := flags.Args()
 	// Length was checked during openEnv().
 	name := toRun[0]

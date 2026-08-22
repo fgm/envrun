@@ -29,8 +29,14 @@ Then use as such: `go tool github.com/fgm/envrun <myprogram>`
 
 - `envrun foo`: run `foo` with the environment defaults loaded from `.env` if it exists,
   or fail if it cannot be read.
-- `envrun -f .env.demo env`: run the `env` command with the environment defaults
-  loaded from `.env.demo` or fail if it cannot be read
+- `envrun -f other.env env`: run the `env` command with the environment defaults
+  loaded from `other.env`, or fail if it cannot be read.
+
+To see that on a real file, `make demo` builds one from the parsing fixtures in
+`testdata/` and runs `env` against it,
+showing only the variables the file defines.
+Those fixtures are what the test suite asserts against,
+so the demo cannot drift from the documented behaviour.
 
 ### Exit status
 

@@ -1,0 +1,6 @@
+# cmd.go exists to hold what cannot be covered:
+# the constants, the compiled patterns, and a main() that only calls os.Exit.
+# Everything testable lives in main.go,
+# so counting cmd.go would report a gap no test could ever close.
+ignore:
+  - "cmd.go"
