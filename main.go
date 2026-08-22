@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"os"
 	"os/exec"
 	"regexp"
@@ -63,16 +64,14 @@ func envFromReader(r io.Reader) env {
 	return e
 }
 
-// Merge combines two env maps. If keys overlap, the newer one in the argument
-// map overwrites the value found in the receiver map, as in PHP array_merge.
+// Merge combines two env maps.
+//
+// If keys overlap, the newer one in the argument map overwrites the value found in the receiver map,
+// as in PHP array_merge.
 func (e env) Merge(f env) env {
 	res := make(env, len(e)+len(f))
-	for k, v := range e {
-		res[k] = v
-	}
-	for k, v := range f {
-		res[k] = v
-	}
+	maps.Copy(res, e)
+	maps.Copy(res, f)
 	return res
 }
 
