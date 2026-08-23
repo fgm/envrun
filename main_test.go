@@ -1,13 +1,35 @@
 package main
 
 import (
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
+
+// dumpVar names the file the helper process writes its environment to.
+//
+// TestRunPassesOpaqueRows needs a command that reports the environment it was given.
+// Re-entering this binary is the cheapest one available,
+// and dispatching in TestMain keeps that out of the test list:
+// the alternative idiom, a Test function guarded by a skip,
+// reports a skipped test on every ordinary run for something that is not a test.
+const dumpVar = "ENVRUN_TEST_DUMP"
+
+func TestMain(m *testing.M) {
+	if dump := os.Getenv(dumpVar); dump != "" {
+		if err := os.WriteFile(dump, []byte(strings.Join(os.Environ(), "\n")), 0o600); err != nil {
+			fmt.Fprintln(os.Stderr, "helper process:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
 
 // TestRealMainExitStatus covers the exit status realMain reports.
 //
@@ -103,9 +125,9 @@ func TestRealMainExitStatus(t *testing.T) {
 
 // TestEnvFromReader covers parsing, over the fixtures in testdata.
 //
-// Each fixture isolates one behaviour,
-// because a single file cannot exercise more than one rejection:
-// the first failure is reported for the whole file, hiding anything after it.
+// Each fixture isolates one behaviour, so that a failure names one cause.
+// The parser does accumulate problems and reports them together,
+// so a fixture could carry several — it just would not say which one broke.
 func TestEnvFromReader(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -205,6 +227,11 @@ func TestEnvFromReader(t *testing.T) {
 			fixture: "fail-export-prefix",
 			errored: `line 2: invalid name "export EXPORTED"`,
 		},
+		{
+			name:    "a value holding a NUL is refused, execve could not carry it",
+			fixture: "fail-nul-value",
+			errored: "line 2: value contains NUL",
+		},
 	}
 
 	// The prefix is load-bearing: the Makefile builds the demo from pass-*.env,
@@ -263,5 +290,70 @@ func TestEnvFromReader(t *testing.T) {
 				t.Errorf("environment = %v, expected %v", actual, test.expect)
 			}
 		})
+	}
+}
+
+// TestEnvFromEnv covers what a parent can hand us, but os.Setenv cannot produce.
+//
+// An environment entry without "=" is legal at the execve level,
+// and splitting one on the assumption that it is a pair used to panic with an index error,
+// exiting 2 and breaking the documented 125/126/127 contract.
+func TestEnvFromEnv(t *testing.T) {
+	rows := []string{"A=1", "NOEQUALS", "=novalue", "B=2", "C=", "A=2"}
+	// A repeated name keeps the first, as getenv does when scanning envp.
+	want := env{"A": "1", "B": "2", "C": ""}
+	wantOpaque := []string{"NOEQUALS", "=novalue"}
+
+	got, gotOpaque := envFromEnv(rows)
+
+	if !slices.Equal(gotOpaque, wantOpaque) {
+		t.Errorf("envFromEnv() opaque = %q, want %q", gotOpaque, wantOpaque)
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("envFromEnv() got %d entries, want %d: %v", len(got), len(want), got)
+	}
+	for k, w := range want {
+		if g, ok := got[k]; !ok || g != w {
+			t.Errorf("envFromEnv()[%q] = %q, %t; want %q, true", k, g, ok, w)
+		}
+	}
+}
+
+// TestRunPassesOpaqueRows covers the rows envrun cannot represent reaching the
+// command.
+//
+// envFromEnv classifying them proves nothing on its own: what matters is the
+// environment run assembles, and deleting the append that carries them left the
+// rest of this suite green.
+//
+// The command is this test binary rather than a shell, because a shell rebuilds
+// its own environment before exec'ing anything, and would be free to drop the
+// very rows under test. TestMain turns it into the helper; see dumpVar.
+func TestRunPassesOpaqueRows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the environment rows under test cannot occur on Windows")
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("locating the test binary: %v", err)
+	}
+	dump := filepath.Join(t.TempDir(), "env.txt")
+	opaque := []string{"NOEQUALS", "=novalue"}
+
+	err = run(env{dumpVar: dump}, opaque, exe, nil)
+	if err != nil {
+		t.Fatalf("run() = %v, want nil", err)
+	}
+
+	dumped, err := os.ReadFile(dump)
+	if err != nil {
+		t.Fatalf("reading the environment the command saw: %v", err)
+	}
+	got := strings.Split(strings.TrimRight(string(dumped), "\n"), "\n")
+	for _, want := range opaque {
+		if !slices.Contains(got, want) {
+			t.Errorf("the command's environment lacks %q; it holds %q", want, got)
+		}
 	}
 }

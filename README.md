@@ -64,6 +64,47 @@ reports the command's own failure as `<command> exited with status <n>`,
 and prefixes its own failures with `failed`.
 
 
+### The file is not a shell script
+
+`envrun` reads the file, it does not source it:
+
+- **It rejects what it cannot carry**, where a shell would accept it: 
+  values spanning several lines, an `export` prefix,
+  and any name outside `[_A-Za-z][-._A-Za-z0-9]*`. 
+  - One bad line fails the whole file,
+    because running a command on configuration the operator meant to set is worse than not running it.
+  - This half is loud — `envrun` exits `125` before the command starts,
+    naming the line at fault.
+    A file it cannot read at all, such as one holding a line over 64 KiB,
+    fails the same way but without a position.
+- **It does not expand anything**, where a shell would.
+  - `$VAR`, `${VAR}` and `$(command)` are passed through as the literal characters they are,
+    so a variable like this one reaches the command as that exact string.
+
+```dotenv
+DSN=postgres://${INSTANCE}/db
+```
+
+  - A shell sourcing the same file would substitute, or execute,
+    and hand the command something else entirely.
+  - **This half is silent**: both readers succeed, and the values simply differ.
+    If a file is read both ways — sourced by a launcher,
+    and passed to `envrun` elsewhere, the two diverge invisibly.
+    Keep values plain, or read the file one way only.
+
+Rows in the *inherited* environment that are not `name=value` are carried
+through rather than dropped or rejected, since a command run without `envrun`
+would see them. They are legal at the `execve` level, `envp` being a plain array
+the kernel does not police, and two kinds occur:
+
+- a row with no `=` at all, which no name can match, so nothing can read it;
+- a row with an empty name, such as `=value`, which `getenv("")` does find.
+
+They arrive after the pairs rather than in their original position, and Go
+itself drops empty rows and collapses repeated names before `envrun` sees them,
+so the environment is faithful in content but not byte-for-byte identical to
+what a direct `exec` would deliver.
+
 ## Dependencies
 
 `envrun` has none at build or run time: it uses only the standard library.

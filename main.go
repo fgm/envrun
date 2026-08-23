@@ -15,15 +15,42 @@ import (
 	"syscall"
 )
 
-func envFromEnv() env {
+// envFromEnv parses environment rows as os.Environ returns them,
+// returning the pairs it can represent and, separately, the rows it cannot.
+//
+// envp is a plain array at the execve level:
+// the kernel enforces neither shape nor uniqueness,
+// so any parent can hand us a row that is not name=value,
+// and indexing a split on the assumption that it is one used to panic.
+// Two kinds arrive, and they are not the same thing despite being handled alike:
+//
+//   - a row without "=", which no name can match,
+//     since getenv compares a name against the text before the "=";
+//   - a row with an empty name, such as "=value", which getenv("") does find.
+//
+// Both are passed through rather than dropped,
+// because a command run without envrun would see them.
+// Only the first is genuinely unreadable.
+//
+// Dedup keeps the first occurrence, as getenv does when scanning envp.
+// It never fires on os.Environ output, which syscall.copyenv has already deduped,
+// but the rows are the caller's to supply,
+// and the map must not impose the opposite rule on them.
+func envFromEnv(rows []string) (env, []string) {
 	e := make(env)
-	for _, row := range os.Environ() {
-		// Pairs in the environment are assumed to be valid.
-		pair := strings.SplitN(row, "=", 2)
-		k, v := pair[0], pair[1]
+	var opaque []string
+	for _, row := range rows {
+		k, v, found := strings.Cut(row, "=")
+		if !found || k == "" {
+			opaque = append(opaque, row)
+			continue
+		}
+		if _, seen := e[k]; seen {
+			continue
+		}
 		e[k] = v
 	}
-	return e
+	return e, opaque
 }
 
 // envFromReader parses an environment file.
@@ -32,7 +59,8 @@ func envFromEnv() env {
 // Skipping a malformed line would leave the command running on configuration the operator meant to set,
 // which is worse than not running it at all.
 //
-// It also rejects the multiline quoted values other formats allow:
+// It also rejects values containing NUL, which cannot be passed to a command at all,
+// and the multiline quoted values other formats allow:
 // envrun does not interpret quotes, so a value spanning lines cannot be represented,
 // and keeping only its first line would be corruption rather than an omission.
 //
@@ -61,6 +89,15 @@ func envFromReader(r io.Reader) (env, error) {
 		v = strings.Trim(v, " \t")
 		if !nameRx.MatchString(k) {
 			problems = append(problems, fmt.Sprintf("line %d: invalid name %q", line, k))
+			continue
+		}
+		// A NUL cannot reach a command: exec rejects it before execve,
+		// and execve takes NUL-terminated strings in any case.
+		// Letting it through already failed, and already exited 125.
+		// What catching it here adds is the line number,
+		// and an error attributed to the file rather than to the command.
+		if strings.ContainsRune(v, 0) {
+			problems = append(problems, fmt.Sprintf("line %d: value contains NUL", line))
 			continue
 		}
 		e[k] = v
@@ -105,11 +142,13 @@ func openEnv(args []string) (io.ReadCloser, *flag.FlagSet, error) {
 	return inFile, fs, nil
 }
 
-func run(env env, name string, args []string) error {
-	fEnv := make([]string, 0, len(env))
+func run(env env, opaque []string, name string, args []string) error {
+	fEnv := make([]string, 0, len(env)+len(opaque))
 	for k, v := range env {
 		fEnv = append(fEnv, fmt.Sprintf("%s=%s", k, v))
 	}
+	// Rows envrun could not represent, carried through verbatim: see envFromEnv.
+	fEnv = append(fEnv, opaque...)
 	cmd := exec.Command(name, args...)
 	cmd.Env = fEnv
 	stdout, err := cmd.StdoutPipe()
@@ -154,12 +193,13 @@ func realMain(args []string) int {
 		log.Print(err)
 		return ExitEnvrun
 	}
-	e := fileEnv.Merge(envFromEnv())
+	inherited, opaque := envFromEnv(os.Environ())
+	e := fileEnv.Merge(inherited)
 	toRun := flags.Args()
 	// Length was checked during openEnv().
 	name := toRun[0]
 
-	err = run(e, name, toRun[1:])
+	err = run(e, opaque, name, toRun[1:])
 	if err == nil {
 		return 0
 	}
