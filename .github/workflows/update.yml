@@ -10,11 +10,11 @@ permissions:
 
 jobs:
   check-schedule:
-    uses: ./.github/workflows/check-first-saturday.yml
+    uses: ./.github/workflows/check-first-week.yml
 
   dep_update:
     needs: check-schedule
-    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-saturday == 'true'
+    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-week == 'true'
     permissions:
       contents: write  # for peter-evans/create-pull-request to create branch
       pull-requests: write  # for peter-evans/create-pull-request to create a PR

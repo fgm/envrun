@@ -1,6 +1,6 @@
 module github.com/fgm/envrun
 
-go 1.27.0
+go 1.26.7
 
 tool honnef.co/go/tools/cmd/staticcheck
 

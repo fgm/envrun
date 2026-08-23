@@ -1,0 +1,30 @@
+name: Check first week of month
+
+permissions: {}
+
+on:
+  workflow_call:
+    outputs:
+      is-first-week:
+        description: "'true' if today is in the first week of the month"
+        value: ${{ jobs.check.outputs.is-first-week }}
+
+jobs:
+  check:
+    name: Check first week of month
+    runs-on: ubuntu-latest
+    outputs:
+      is-first-week: ${{ steps.check.outputs.is-first-week }}
+    steps:
+      # Callers restrict the weekday in their own cron, so day-of-month <= 7 is
+      # what turns "every Saturday" into "the first Saturday". Kept weekday-
+      # agnostic so callers scheduled on any day can share this gate.
+      - name: Check if today is in the first week of the month
+        id: check
+        run: |
+          day=$(date +%-d)
+          if [ "$day" -le 7 ]; then
+            echo "is-first-week=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-first-week=false" >> "$GITHUB_OUTPUT"
+          fi
