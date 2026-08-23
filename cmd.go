@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"regexp"
 )
 
 // Exit statuses for envrun's own failures.
@@ -19,22 +18,6 @@ const (
 	// ExitNotFound reports that the command could not be found.
 	ExitNotFound = 127
 )
-
-const (
-	// CommentRx matches comment lines.
-	CommentRx = `^[\s]*#`
-	// NameRx is much tighter than Posix, which accepts anything but NUL and '=',
-	// but laxer than shells, which do not accept dots. Names are assumed to be pre-trimmed.
-	// The leading underscore shells allow is accepted too: _JAVA_OPTIONS and its kind are real.
-	NameRx = `^[_a-zA-Z][-._a-zA-Z0-9]*$`
-)
-
-var (
-	commentRx = regexp.MustCompile(CommentRx)
-	nameRx    = regexp.MustCompile(NameRx)
-)
-
-type env map[string]string
 
 func main() {
 	// No timestamp or file prefix:

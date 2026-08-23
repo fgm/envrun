@@ -61,5 +61,5 @@ Prefixed `envrun:` and never `envrun failed:` —
 `envrun` did not fail, and the status is the command's.
 
 Why `execve` rather than forwarding signals from a wrapper is recorded in
-[ADR-001](adr/0001-handing-control-to-the-command.md),
+[ADR-001](adr/001-handing-control-to-the-command.md),
 with the measurements behind it.

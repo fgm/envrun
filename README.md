@@ -16,6 +16,13 @@ Many programs, and most IDEs in their run configurations, can read a `.env` file
 `envrun` is for everywhere else — CI/CD, a `just` or `make` target, a plain shell —
 where the program to be run cannot.
 
+If the program is yours and written in Go, you need no wrapper at all:
+import [`github.com/fgm/envrun/env`](https://pkg.go.dev/github.com/fgm/envrun/env)
+and call `env.Apply()` at the top of `main`.
+It reads the same file by the same rules,
+so a project can use the command in CI and the library in its own binaries
+without keeping two dialects of one format in its head.
+
 On \*nix, `envrun` does not wrap the command:
 it **becomes** it, through `execve`, keeping the same process.
 Signals, exit status, standard streams and the controlling terminal
@@ -49,7 +56,7 @@ so keep values plain if both read it.
 The format, and what it refuses to carry, is in
 [The environment file](docs/environment-file.md).
 
-`make demo` builds a file from the parsing fixtures in `testdata/` and runs `env` against it.
+`make demo` builds a file from the parsing fixtures in `env/testdata/` and runs `env` against it.
 Those fixtures are what the test suite asserts against,
 so the demo cannot drift from the documented behaviour.
 
@@ -99,7 +106,11 @@ No dependencies, standard library only, checkable with `go version -m`.
 
 Why `envrun` replaces itself with the command rather than supervising it,
 and the measurements behind that choice:
-[ADR-001](docs/adr/0001-handing-control-to-the-command.md).
+[ADR-001](docs/adr/001-handing-control-to-the-command.md).
+
+Why the parsing lives in an importable package, what shape that package has,
+and what was declined on the way:
+[ADR-002](docs/adr/002-splitting-the-command-from-the-library.md).
 
 ## Support
 

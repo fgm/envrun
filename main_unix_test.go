@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -144,8 +146,23 @@ func TestRealMainErrnoClassification(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			// Captured as the sibling table in main_test.go does.
+			// Left to the default logger these four lines reach the real standard
+			// error, where they read as failures of the run rather than as the
+			// deliberate ones they are, and carry a timestamp no real run has,
+			// main() being the only caller of log.SetFlags.
+			var stderr bytes.Buffer
+			log.SetOutput(&stderr)
+			defer log.SetOutput(os.Stderr)
+
 			if actual := realMain([]string{"envrun", "-f", valid, test.command(t)}); actual != test.expected {
 				t.Errorf("realMain() = %d, expected %d", actual, test.expected)
+			}
+			// Asserted rather than merely swallowed: muting the line without
+			// reading it would lose the diagnostic and check nothing in its place.
+			// Every status here is envrun's own, so every one must say so.
+			if !strings.Contains(stderr.String(), failPrefix) {
+				t.Errorf("stderr does not attribute the failure to envrun: %q", stderr.String())
 			}
 		})
 	}
