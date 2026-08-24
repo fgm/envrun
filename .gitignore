@@ -4,6 +4,9 @@
 /.env.demo
 # The command itself, when built in place by `go build ./...`.
 /envrun
+# Created by "make cover". Only its *.out contents match a rule below, so the
+# directory itself needs one: anything else written there would be committed.
+/coverage/
 
 # Binaries for programs and plugins
 *.exe

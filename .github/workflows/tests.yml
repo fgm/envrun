@@ -45,3 +45,31 @@ jobs:
         verbose: false
         directory: ./coverage
         env_vars: OS
+
+  # A second job rather than a matrix on the one above:
+  # Windows runs neither the Makefile's shell recipes nor the race detector,
+  # and reports no coverage, so a matrix would be conditionals in every step.
+  # What it must prove is narrower —
+  # that the platform still builds and still runs a command.
+  # The transparency v0.2.0 adds is *nix-only (ADR-001),
+  # and Windows keeps the supervising path,
+  # which until now had no runner to catch a regression in.
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: go.mod
+
+    - name: Build
+      run: go build ./...
+
+    # Without -race:
+    # the detector needs a C toolchain,
+    # which is a heavier dependency than this job's purpose justifies.
+    # The *nix job runs it.
+    - name: Test
+      run: go test ./...

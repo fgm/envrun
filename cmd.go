@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"regexp"
 )
@@ -36,5 +37,10 @@ var (
 type env map[string]string
 
 func main() {
+	// No timestamp or file prefix:
+	// these lines sit on the same standard error as the command's own diagnostics,
+	// which carry none,
+	// and a caller reading them is being told which process failed, not when.
+	log.SetFlags(0)
 	os.Exit(realMain(os.Args))
 }
