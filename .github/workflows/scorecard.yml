@@ -20,12 +20,12 @@ permissions: read-all
 
 jobs:
   check-schedule:
-    uses: ./.github/workflows/check-first-saturday.yml
+    uses: ./.github/workflows/check-first-week.yml
 
   analysis:
     name: Scorecard analysis
     needs: check-schedule
-    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-saturday == 'true'
+    if: github.event_name != 'schedule' || needs.check-schedule.outputs.is-first-week == 'true'
     runs-on: ubuntu-latest
     permissions:
       # Needed to upload the results to code-scanning dashboard.
