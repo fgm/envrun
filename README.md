@@ -4,6 +4,7 @@
 [![CI](https://github.com/fgm/envrun/actions/workflows/tests.yml/badge.svg)](https://github.com/fgm/envrun/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/fgm/envrun/branch/main/graph/badge.svg?token=8YYX1B720M)](https://codecov.io/gh/fgm/envrun)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fgm/envrun/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fgm/envrun)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14232/badge)](https://www.bestpractices.dev/projects/14232)
 
 The `envrun` command runs any command with default environment variables taken from a file,
 then gets out of the way.
