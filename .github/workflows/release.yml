@@ -28,10 +28,25 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') == false
     runs-on: ubuntu-latest
     steps:
-    - name: Harden the runner (Audit all outbound calls)
+    # Blocked rather than audited, because this job is exercised on every PR
+    # that touches it: a missing endpoint costs a red check here, where in the
+    # release job below it would cost a release. sum.golang.org and
+    # objects.githubusercontent.com are not in StepSecurity's observed baseline,
+    # which reflects a warm module cache; a cold one reaches both.
+    - name: Harden the runner (Block unexpected outbound calls)
       uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
       with:
-        egress-policy: audit
+        egress-policy: block
+        allowed-endpoints: >
+          api.github.com:443
+          get.anchore.io:443
+          github.com:443
+          objects.githubusercontent.com:443
+          proxy.golang.org:443
+          raw.githubusercontent.com:443
+          release-assets.githubusercontent.com:443
+          sum.golang.org:443
+          toolbox-data.anchore.io:443
 
     # Full history: GoReleaser derives the version and the changelog from tags.
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
