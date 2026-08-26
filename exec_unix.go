@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os/exec"
 	"syscall"
+
+	"github.com/fgm/envrun/env"
 )
 
 // run replaces the envrun process with the command, and returns only if it cannot.
@@ -18,7 +20,7 @@ import (
 // That is what closes #35 and #1,
 // and why the only statuses reachable here are envrun's own 125/126/127.
 // The reasoning, and the options declined, are in ADR-001.
-func run(e env, opaque []string, name string, args []string) int {
+func run(e env.Vars, opaque []string, name string, args []string) int {
 	// LookPath rather than letting execve resolve the name:
 	// only Go's own lookup distinguishes "not found" from "found but not executable",
 	// which is what 127 and 126 report.
@@ -27,7 +29,7 @@ func run(e env, opaque []string, name string, args []string) int {
 	// so there is no happy path to end on, and err is non-nil at every line below.
 	if err == nil {
 		// argv[0] is the name as given, not the resolved path, as exec.Command passes it.
-		err = syscall.Exec(path, append([]string{name}, args...), envList(e, opaque))
+		err = syscall.Exec(path, append([]string{name}, args...), e.Environ(opaque))
 	}
 	fail(fmt.Errorf("running %s: %w", name, err))
 	return exitStatus(err)

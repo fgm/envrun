@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/fgm/envrun/env"
 )
 
 // The roles this binary can take when it is not running tests.
@@ -210,8 +212,8 @@ func TestRealMainOwnFailures(t *testing.T) {
 		command []string
 		// cause identifies the failure the case is about.
 		// Four of these exit 125, so the status alone cannot tell them apart:
-		// without it, moving a check in openEnv would leave every case passing
-		// while proving something else.
+		// without it, moving a check between parseArgs and env.Load
+		// would leave every case passing while proving something else.
 		// Kept to text both platforms produce, since Windows runs this too.
 		cause    string
 		expected int
@@ -245,12 +247,13 @@ func TestRealMainOwnFailures(t *testing.T) {
 			expected: ExitEnvrun,
 		},
 		{
-			name: "a line the scanner cannot read at all returns 125",
-			// Over bufio.Scanner's 64 KiB token limit, so the read fails rather
-			// than the parse: the file has no line at fault to name.
+			name: "a line too long to hold returns 125",
+			// Over bufio.Scanner's 64 KiB token limit. The fault is in the file,
+			// so it is reported as a problem naming its line, not as a read
+			// failure: see env.ErrTooLong.
 			envFile:  writeEnvFile(t, "TOO_LONG="+strings.Repeat("x", 64*1024)),
 			command:  []string{sh, flag, "exit 0"},
-			cause:    "token too long",
+			cause:    "line 1: too long",
 			expected: ExitEnvrun,
 		},
 		{
@@ -307,203 +310,6 @@ func TestRealMainNeedsSomethingToRun(t *testing.T) {
 	}
 }
 
-// TestEnvFromReader covers parsing, over the fixtures in testdata.
-//
-// Each fixture isolates one behaviour, so that a failure names one cause.
-// The parser does accumulate problems and reports them together,
-// so a fixture could carry several — it just would not say which one broke.
-func TestEnvFromReader(t *testing.T) {
-	tests := []struct {
-		name    string
-		fixture string
-		expect  env
-		errored string
-	}{
-		{
-			name:    "values are transported, never interpreted",
-			fixture: "pass-literal-values",
-			expect: env{
-				"HASH":       "sharp after a var # is not a comment",
-				"SQUOTED":    "'quoted'",
-				"DQUOTED":    `"dquoted"`,
-				"BACKQUOTED": "`backquoted`",
-				"MISQUOTED":  `"misquoted'`,
-				"JSON":       `{"a": "b"}`,
-			},
-		},
-		{
-			name:    "no interpolation of any dollar form",
-			fixture: "pass-no-interpolation",
-			expect: env{
-				"SIMPLE": "simple",
-				"BRACED": "${SIMPLE}",
-				"BARE":   "$SIMPLE",
-				"DOLLAR": "p$ssw0rd",
-			},
-		},
-		{
-			name:    "names may hold dots, dashes and a leading underscore",
-			fixture: "pass-valid-names",
-			expect: env{
-				"PLAIN": "1", "lower": "2", "DOT.TED": "3",
-				"DASH-ED": "4", "_LEADING": "5", "MIX_ed.Na-me9": "6",
-			},
-		},
-		{
-			name:    "only the first equals sign separates",
-			fixture: "pass-equals-in-value",
-			expect: env{
-				"ASSIGN": "foo=bar",
-				"URL":    "postgres://h:5432/db?sslmode=disable",
-			},
-		},
-		{
-			name:    "comments and blank lines are skipped",
-			fixture: "pass-comments-blanks",
-			expect:  env{"KEPT": "yes"},
-		},
-		{
-			name:    "blanks around the name and the value are trimmed",
-			fixture: "pass-trimmed",
-			expect: env{
-				"SPACED":       "value with spaces inside",
-				"TABBED":       "tabbed",
-				"INDENTED":     "leading spaces",
-				"TAB_INDENTED": "leading tab",
-				"BOTH":         "both sides",
-			},
-		},
-		{
-			name:    "a repeated name keeps the last value, as Merge does",
-			fixture: "pass-duplicate-name",
-			expect: env{
-				"DUP":   "second",
-				"OTHER": "x",
-			},
-		},
-		{
-			name:    "a name holding a space is refused",
-			fixture: "fail-name-with-space",
-			errored: `line 2: invalid name "SPA CED"`,
-		},
-		{
-			name:    "a name opening on a digit is refused",
-			fixture: "fail-leading-digit",
-			errored: `line 2: invalid name "9LEADING"`,
-		},
-		{
-			name:    "a name outside ASCII is refused",
-			fixture: "fail-non-ascii-name",
-			errored: `line 2: invalid name "Aé"`,
-		},
-		{
-			name:    "a line without an equals sign is refused",
-			fixture: "fail-no-separator",
-			errored: "line 2: not a name=value pair",
-		},
-		{
-			name:    "a value spanning lines is refused, not truncated",
-			fixture: "fail-multiline",
-			errored: "line 3: not a name=value pair",
-		},
-		{
-			name:    "the shell export prefix is refused, this format is not sourceable",
-			fixture: "fail-export-prefix",
-			errored: `line 2: invalid name "export EXPORTED"`,
-		},
-		{
-			name:    "a value holding a NUL is refused, execve could not carry it",
-			fixture: "fail-nul-value",
-			errored: "line 2: value contains NUL",
-		},
-	}
-
-	// The prefix is load-bearing: the Makefile builds the demo from pass-*.env,
-	// so a fixture named for the wrong outcome would quietly break the demo.
-	covered := make(map[string]bool, len(tests))
-	for _, test := range tests {
-		covered[test.fixture] = true
-		wantErr := test.errored != ""
-		if got := strings.HasPrefix(test.fixture, "fail-"); got != wantErr {
-			t.Errorf("fixture %q: name says failing=%v, case expects failing=%v",
-				test.fixture, got, wantErr)
-		}
-	}
-	fixtures, err := filepath.Glob(filepath.Join("testdata", "*.env"))
-	if err != nil {
-		t.Fatalf("failed listing fixtures: %v", err)
-	}
-	for _, fixture := range fixtures {
-		name := strings.TrimSuffix(filepath.Base(fixture), ".env")
-		if !covered[name] {
-			t.Errorf("fixture %q has no case: every file in testdata must be asserted", name)
-		}
-	}
-	// Both checks above report every problem before this stops the test:
-	// running the cases on an inconsistent fixture set buries the real failure
-	// under a list of passing subtests.
-	if t.Failed() {
-		t.FailNow()
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			file, err := os.Open(filepath.Join("testdata", test.fixture+".env"))
-			if err != nil {
-				t.Fatalf("failed opening fixture: %v", err)
-			}
-			defer file.Close()
-
-			actual, err := envFromReader(file)
-			if test.errored != "" {
-				if err == nil {
-					t.Fatalf("expected an error holding %q, got none", test.errored)
-				}
-				if !strings.Contains(err.Error(), test.errored) {
-					t.Errorf("error = %q, expected it to hold %q", err, test.errored)
-				}
-				if actual != nil {
-					t.Errorf("expected no environment beside an error, got %v", actual)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !maps.Equal(actual, test.expect) {
-				t.Errorf("environment = %v, expected %v", actual, test.expect)
-			}
-		})
-	}
-}
-
-// TestEnvFromEnv covers what a parent can hand us, but os.Setenv cannot produce.
-//
-// An environment entry without "=" is legal at the execve level,
-// and splitting one on the assumption that it is a pair used to panic with an index error,
-// exiting 2 and breaking the documented 125/126/127 contract.
-func TestEnvFromEnv(t *testing.T) {
-	rows := []string{"A=1", "NOEQUALS", "=novalue", "B=2", "C=", "A=2"}
-	// A repeated name keeps the first, as getenv does when scanning envp.
-	want := env{"A": "1", "B": "2", "C": ""}
-	wantOpaque := []string{"NOEQUALS", "=novalue"}
-
-	got, gotOpaque := envFromEnv(rows)
-
-	if !slices.Equal(gotOpaque, wantOpaque) {
-		t.Errorf("envFromEnv() opaque = %q, want %q", gotOpaque, wantOpaque)
-	}
-
-	if len(got) != len(want) {
-		t.Fatalf("envFromEnv() got %d entries, want %d: %v", len(got), len(want), got)
-	}
-	for k, w := range want {
-		if g, ok := got[k]; !ok || g != w {
-			t.Errorf("envFromEnv()[%q] = %q, %t; want %q, true", k, g, ok, w)
-		}
-	}
-}
-
 // TestCommandReadsStandardInput covers issue #1: a filter command gets its input.
 //
 // envrun never wired standard input, so anything reading it saw EOF.
@@ -533,7 +339,7 @@ func TestCommandReadsStandardInput(t *testing.T) {
 // TestCommandGetsOpaqueRows covers the rows envrun cannot represent
 // reaching the command.
 //
-// envFromEnv classifying them proves nothing on its own:
+// env.FromEnviron classifying them proves nothing on its own:
 // what matters is the environment the command is given,
 // and deleting the append that carries them left the rest of this suite green.
 //
@@ -568,5 +374,34 @@ func TestCommandGetsOpaqueRows(t *testing.T) {
 		if !slices.Contains(got, want) {
 			t.Errorf("the command's environment lacks %q; it holds %q", want, got)
 		}
+	}
+}
+
+// TestReportNotes covers the reporting of Result.Notes, which no end-to-end case
+// can reach: the only note envrun raises needs a failing Close, and no portable
+// test can provoke one. Handing it a fabricated note exercises the same loop.
+func TestReportNotes(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(os.Stderr)
+		log.SetFlags(log.LstdFlags)
+	}()
+
+	cause := &fs.PathError{Op: "close", Path: "x.env", Err: fs.ErrPermission}
+	reportNotes([]env.Note{env.CloseError{Err: cause}})
+
+	// A note, not a failure: envrun did not fail, so the line must not say so.
+	expected := "envrun: could not close the environment file: close x.env: permission denied\n"
+	if actual := buf.String(); actual != expected {
+		t.Errorf("reportNotes() wrote %q, expected %q", actual, expected)
+	}
+
+	// Nothing to report writes nothing at all.
+	buf.Reset()
+	reportNotes(nil)
+	if actual := buf.String(); actual != "" {
+		t.Errorf("reportNotes(nil) wrote %q, expected nothing", actual)
 	}
 }

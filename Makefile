@@ -29,7 +29,7 @@ demo: $(DEMO_ENV)
 	@LOCAL=demo $(GO) run . -f $(DEMO_ENV) env | grep -f $(DEMO_ENV).names | sort
 	@rm -f $(DEMO_ENV).names
 
-$(DEMO_ENV): $(wildcard testdata/pass-*.env)
+$(DEMO_ENV): $(wildcard env/testdata/pass-*.env)
 	cat $^ > $@
 
 .PHONY: build clean cover demo install lint modernize test

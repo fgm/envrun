@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/fgm/envrun/env"
 )
 
 // run starts the command as a child process and reports the status it exits with.
@@ -29,9 +31,9 @@ import (
 // The remaining platforms it covers, js/wasm and wasip1, cannot start a process at all.
 // They reach the same code and fail at cmd.Run(), reporting 125 with the reason,
 // which is what a wrapper that cannot wrap should do.
-func run(e env, opaque []string, name string, args []string) int {
+func run(e env.Vars, opaque []string, name string, args []string) int {
 	cmd := exec.Command(name, args...)
-	cmd.Env = envList(e, opaque)
+	cmd.Env = e.Environ(opaque)
 	// Assigned rather than piped through copying goroutines:
 	// the command then has envrun's own handles, which is what closes #1 here,
 	// and Wait can no longer close a pipe ahead of the copy draining it.

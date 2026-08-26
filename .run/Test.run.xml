@@ -12,11 +12,12 @@
         <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </EXTENSION>
-    <kind value="PACKAGE" />
+    <kind value="DIRECTORY" />
     <package value="github.com/fgm/envrun" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <framework value="gotest" />
+    <pattern value="./..." />
     <method v="2" />
   </configuration>
 </component>
