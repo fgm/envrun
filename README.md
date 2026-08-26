@@ -53,9 +53,14 @@ Verifying a download, and the full comparison, is in the
 
 ## Running
 
-- `envrun foo`: run `foo` with the environment defaults loaded from `.env` if it exists,
-  or fail if it cannot be read.
+- `envrun foo`: run `foo` with the environment defaults loaded from `.env`,
+  or fail if it is missing or cannot be read.
 - `envrun -f other.env env`: run the `env` command with the defaults loaded from `other.env`.
+
+The file is required either way.
+A run with no defaults to add is a run that does not need `envrun`,
+so a missing file is a failure rather than a silent pass-through:
+configuration that was meant to be there is worth stopping for.
 
 `envrun` reads the file, it never sources it — no expansion, no execution,
 so `DSN=postgres://${INSTANCE}/db` reaches the command exactly as written.

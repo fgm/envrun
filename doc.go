@@ -10,6 +10,8 @@
 //	-f file
 //		Read the environment from file
 //		instead of .env in the working directory.
+//		The file must exist, named or defaulted:
+//		a run with no defaults to add does not need envrun.
 //
 // The file is read, never sourced — no expansion and no execution — so a value
 // reaches the command exactly as written. Its variables are merged under the
