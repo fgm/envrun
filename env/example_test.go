@@ -21,7 +21,7 @@ import (
 // is also compiled as a standalone program — by pkg.go.dev's Run button, say —
 // where a relative path would resolve against somewhere else entirely.
 func writeEnv(body string) (path string, remove func()) {
-	dir, err := os.MkdirTemp("", "envrun")
+	dir, err := os.MkdirTemp("", env.AppName)
 	if err != nil {
 		log.Fatal(err)
 	}

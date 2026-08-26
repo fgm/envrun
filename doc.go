@@ -4,6 +4,7 @@
 // Usage:
 //
 //	envrun [-f file] command [argument ...]
+//	envrun -h
 //
 // The flags are:
 //
@@ -12,6 +13,10 @@
 //		instead of .env in the working directory.
 //		The file must exist, named or defaulted:
 //		a run with no defaults to add does not need envrun.
+//
+//	-h, -help
+//		Print the usage message on standard output and exit 0,
+//		without reading the environment or running a command.
 //
 // The file is read, never sourced — no expansion and no execution — so a value
 // reaches the command exactly as written. Its variables are merged under the
@@ -30,6 +35,7 @@
 //
 // Statuses 125, 126 and 127 report envrun's own failures before the command
 // starts, following the convention of coreutils env, timeout and nohup.
+// They are the only statuses envrun reports for itself, -h aside.
 // A command exiting 125 itself stays distinguishable,
 // because envrun names itself on standard error whenever one of these is its own.
 // See docs/exit-status.md.

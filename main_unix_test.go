@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/fgm/envrun/env"
 )
 
 // TestExecKeepsThePID covers the process replacement itself,
@@ -155,7 +157,7 @@ func TestRealMainErrnoClassification(t *testing.T) {
 			log.SetOutput(&stderr)
 			defer log.SetOutput(os.Stderr)
 
-			if actual := realMain([]string{"envrun", "-f", valid, test.command(t)}); actual != test.expected {
+			if actual := realMain([]string{env.AppName, "-f", valid, test.command(t)}); actual != test.expected {
 				t.Errorf("realMain() = %d, expected %d", actual, test.expected)
 			}
 			// Asserted rather than merely swallowed: muting the line without

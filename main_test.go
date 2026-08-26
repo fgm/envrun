@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -46,7 +47,7 @@ func TestMain(m *testing.M) {
 		helperReport(strconv.Itoa(os.Getpid()))
 	case "cat":
 		if _, err := io.Copy(os.Stdout, os.Stdin); err != nil {
-			fmt.Fprintln(os.Stderr, "helper process:", err)
+			_, _ = fmt.Fprintln(os.Stderr, "helper process:", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -61,7 +62,7 @@ func TestMain(m *testing.M) {
 // helperReport writes the one fact the helper was asked for, and ends the process.
 func helperReport(s string) {
 	if err := os.WriteFile(os.Getenv(outVar), []byte(s), 0o600); err != nil {
-		fmt.Fprintln(os.Stderr, "helper process:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "helper process:", err)
 		os.Exit(1)
 	}
 	os.Exit(0)
@@ -104,13 +105,34 @@ func shell() (string, string) {
 	return "sh", "-c"
 }
 
-// failPrefix is what fail() writes,
-// and what the README tells a caller to look for
-// when a 125, 126 or 127 could have come from either envrun or the command.
-// Asserted from both sides —
-// present for every own failure, absent whenever the command ran —
-// since a rule documented as exact is worth nothing if only half of it is checked.
-const failPrefix = "envrun failed: "
+// TestPrefixesMatchTheDocumentation reads the documents that quote the prefixes.
+//
+// They carry the literals rather than sharing the constants, so a prefix changed
+// here without changing them there leaves the attribution rule documented wrong.
+func TestPrefixesMatchTheDocumentation(t *testing.T) {
+	tests := []struct {
+		path   string
+		prefix string
+	}{
+		{path: filepath.Join("docs", "exit-status.md"), prefix: failPrefix},
+		{path: filepath.Join("docs", "exit-status.md"), prefix: notePrefix},
+		{path: "README.md", prefix: failPrefix},
+	}
+
+	for _, test := range tests {
+		t.Run(test.path+" "+strings.TrimSpace(test.prefix), func(t *testing.T) {
+			doc, err := os.ReadFile(test.path)
+			if err != nil {
+				t.Fatalf("reading the documentation: %v", err)
+			}
+			// Trimmed: prose quotes the token, not the separating space.
+			quoted := strings.TrimSpace(test.prefix)
+			if !strings.Contains(string(doc), quoted) {
+				t.Errorf("%s does not quote %q", test.path, quoted)
+			}
+		})
+	}
+}
 
 // TestDiagnosticsNameEnvrun states the attribution rule at the level it is written.
 //
@@ -138,7 +160,7 @@ func TestDiagnosticsNameEnvrun(t *testing.T) {
 	buf.Reset()
 	note("%s exited with status %d", "sh", 42)
 	actual := buf.String()
-	if expected := "envrun: sh exited with status 42\n"; actual != expected {
+	if expected := notePrefix + "sh exited with status 42\n"; actual != expected {
 		t.Errorf("note() wrote %q, expected %q", actual, expected)
 	}
 	// The load-bearing half:
@@ -277,7 +299,7 @@ func TestRealMainOwnFailures(t *testing.T) {
 			log.SetOutput(&stderr)
 			defer log.SetOutput(os.Stderr)
 
-			args := append([]string{"envrun", "-f", test.envFile}, test.command...)
+			args := append([]string{env.AppName, "-f", test.envFile}, test.command...)
 			if actual := realMain(args); actual != test.expected {
 				t.Errorf("realMain() = %d, expected %d", actual, test.expected)
 			}
@@ -302,11 +324,120 @@ func TestRealMainNeedsSomethingToRun(t *testing.T) {
 	log.SetOutput(&stderr)
 	defer log.SetOutput(os.Stderr)
 
-	if actual := realMain([]string{"envrun"}); actual != ExitEnvrun {
+	if actual := realMain([]string{env.AppName}); actual != ExitEnvrun {
 		t.Errorf("realMain() = %d, expected %d", actual, ExitEnvrun)
 	}
 	if !strings.Contains(stderr.String(), failPrefix) {
 		t.Errorf("stderr does not attribute the failure to envrun: %q", stderr.String())
+	}
+}
+
+// TestHelpWritesUsage covers what -h renders.
+//
+// In process, because parseArgs takes the destination as a parameter:
+// the stream it reaches on a real command line is what the subprocess case below proves.
+func TestHelpWritesUsage(t *testing.T) {
+	var out bytes.Buffer
+	_, _, err := parseArgs([]string{env.AppName, "-h"}, &out, io.Discard)
+	if !errors.Is(err, flag.ErrHelp) {
+		t.Errorf("parseArgs() error = %v, expected it to wrap flag.ErrHelp", err)
+	}
+
+	// The synopsis is the half flag cannot render, PrintDefaults knowing
+	// nothing of the operand; the flag lines are the half it does.
+	for _, want := range []string{
+		"Usage: envrun [-f file] command [argument ...]",
+		"-f string",
+		"-help",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("usage does not mention %q: %q", want, out.String())
+		}
+	}
+}
+
+// TestRejectedFlagIsReportedOnce covers the other half of issue #46:
+// an unknown flag produced three outputs, two of them flag's own.
+//
+// A subprocess, because flag writes to os.Stderr where fail writes through log:
+// in process those are two destinations, and a count in either sees one copy
+// whether or not the other exists.
+func TestRejectedFlagIsReportedOnce(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("locating the test binary: %v", err)
+	}
+
+	cmd := exec.Command(exe, "-nosuchflag", "true")
+	cmd.Env = append(os.Environ(), mainVar+"=1")
+	cmd.Dir = t.TempDir()
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil && cmd.ProcessState == nil {
+		t.Fatalf("failed running envrun: %v", err)
+	}
+	if actual := cmd.ProcessState.ExitCode(); actual != ExitEnvrun {
+		t.Errorf("exit status = %d, expected %d", actual, ExitEnvrun)
+	}
+
+	got := stderr.String()
+	if n := strings.Count(got, "not defined: -nosuchflag"); n != 1 {
+		t.Errorf("the flag is named %d times, expected 1: %q", n, got)
+	}
+	if !strings.Contains(got, failPrefix) {
+		t.Errorf("the failure is not attributed to envrun: %q", got)
+	}
+	// Usage after the message, which is why parseArgs reports and realMain does not.
+	if i, j := strings.Index(got, failPrefix), strings.Index(got, "Usage: envrun"); j < i {
+		t.Errorf("usage precedes the failure it explains: %q", got)
+	}
+	if stdout.Len() != 0 {
+		t.Errorf("a rejected flag wrote to standard output: %q", stdout.String())
+	}
+}
+
+// TestHelpIsNotAFailure covers the whole of issue #46's first half:
+// help goes to standard output, reports 0, and says nothing on standard error.
+//
+// A subprocess, because the streams are the point:
+// in process the writer is a parameter and proves nothing about os.Stdout.
+// The working directory has no .env, which a missing one being fatal since #45
+// turns into a real assertion: an exclusive flag reaches neither the operand
+// check nor env.Load.
+func TestHelpIsNotAFailure(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("locating the test binary: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		flag string
+	}{
+		{name: "-h", flag: "-h"},
+		{name: "-help", flag: "-help"},
+		{name: "--help", flag: "--help"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cmd := exec.Command(exe, test.flag)
+			cmd.Env = append(os.Environ(), mainVar+"=1")
+			cmd.Dir = t.TempDir()
+
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Errorf("envrun %s = %v, expected it to succeed", test.flag, err)
+			}
+			if !strings.Contains(stdout.String(), "Usage: envrun") {
+				t.Errorf("standard output carries no usage: %q", stdout.String())
+			}
+			if stderr.Len() != 0 {
+				t.Errorf("standard error is not empty: %q", stderr.String())
+			}
+		})
 	}
 }
 
@@ -393,7 +524,7 @@ func TestReportNotes(t *testing.T) {
 	reportNotes([]env.Note{env.CloseError{Err: cause}})
 
 	// A note, not a failure: envrun did not fail, so the line must not say so.
-	expected := "envrun: could not close the environment file: close x.env: permission denied\n"
+	expected := notePrefix + "could not close the environment file: close x.env: permission denied\n"
 	if actual := buf.String(); actual != expected {
 		t.Errorf("reportNotes() wrote %q, expected %q", actual, expected)
 	}
