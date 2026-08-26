@@ -32,7 +32,14 @@ see [Exit status and platform scope](docs/exit-status.md).
 
 ## Installing
 
-Pin the version in your project, then build the binary from that pin:
+**Without a Go toolchain**, download the archive for your platform from the
+[latest release](https://github.com/fgm/envrun/releases/latest), unpack it,
+and put `envrun` on your `$PATH`.
+Every release is built by GitHub Actions and carries a Sigstore attestation
+of the repository, workflow and commit it came from.
+
+**With one**, pin the version in your project and build the binary from that pin,
+so the version follows the project rather than the machine:
 
 ```console
 $ go get -tool github.com/fgm/envrun@latest
@@ -40,8 +47,9 @@ $ go build -o bin/ github.com/fgm/envrun
 ```
 
 Then run `bin/envrun <myprogram>`.
-`go tool` and `go install` work too, each at a cost in transparency or in pinning:
-see the [Installing](docs/installing.md) document.
+`go tool` and `go install` work too, each at a cost in transparency or in pinning.
+Verifying a download, and the full comparison, is in the
+[Installing](docs/installing.md) document.
 
 ## Running
 
@@ -80,7 +88,9 @@ The rest, and the Windows divergence, is in
 ## Dependencies
 
 None at build or run time: `envrun` uses only the standard library.
-The modules in `go.mod` belong to `staticcheck`, used for linting —
+The modules in `go.mod` belong to `staticcheck`, used for linting.
+Each release archive ships an SPDX SBOM built from the binary itself,
+so the claim is checkable without a toolchain —
 see the [Installing](docs/installing.md#dependencies) document.
 
 ## Related tools
@@ -90,7 +100,8 @@ The command runs exactly as if it had read the file itself —
 same process, same signals, same exit status, same terminal —
 and nothing in the file is ever expanded or executed,
 so a value cannot mean one thing to a shell and another to the program.
-No dependencies, standard library only, checkable with `go version -m`.
+No dependencies, standard library only,
+checkable with `go version -m` or with the SBOM shipped in every release.
 
 - **[godotenv](https://github.com/joho/godotenv)** is a library:
   the program does the loading, so it has to be Go, and it has to be changed.

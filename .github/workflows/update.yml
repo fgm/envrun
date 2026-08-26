@@ -45,6 +45,19 @@ jobs:
       - name: Tidy
         run: go mod tidy
 
+      # GoReleaser is pinned in .tool-versions, which neither `go get -u`
+      # above nor Dependabot's github-actions group can reach: one sees only
+      # go.mod, the other only `uses:` refs. This step is what keeps that pin
+      # moving with the rest.
+      - name: Update the pinned GoReleaser
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest=$(gh api repos/goreleaser/goreleaser/releases/latest -q .tag_name)
+          [ -n "$latest" ] || { echo "no GoReleaser release found"; exit 1; }
+          sed -i "s/^goreleaser .*/goreleaser ${latest#v}/" .tool-versions
+          grep '^goreleaser ' .tool-versions
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
@@ -71,7 +84,7 @@ jobs:
           commit-message: |
             Update package dependencies + tidy
 
-            Weekly update to the project's package dependencies initiated by an
+            Monthly update to the project's package dependencies initiated by an
             automatic GitHub Action running on cron. Keeps upgrades less of a
             monolithic task and lets security-related patches trickle in more
             quickly.

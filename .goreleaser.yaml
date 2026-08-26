@@ -1,0 +1,63 @@
+# Release build matrix for envrun.
+# Run by .github/workflows/release.yml on a pushed tag,
+# and in snapshot mode on any change to this file,
+# so the pipeline can be exercised without minting a tag: the module proxy caches immutably,
+# and a tag pushed to debug CI could never be taken back.
+version: 2
+
+before:
+  hooks:
+    - go mod verify
+
+builds:
+  - main: .
+    binary: envrun
+    env:
+      # The command links no C, and an explicit 0 keeps a runner with a C
+      # toolchain from producing a dynamically linked artifact.
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    # GoReleaser's default ldflags stamp -X main.version and three siblings.
+    # envrun declares none of them: since Go 1.24 `go build` writes the tag
+    # into the build info by itself, which `go version -m` already reads.
+    ldflags:
+      - -s -w
+    # Only the platforms that can start a process. js/wasm and wasip1/wasm
+    # compile but cannot exec (exec_other.go:31), so shipping them from a
+    # command runner would promise something the artifact cannot do.
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - name_template: "envrun_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+      - SECURITY.md
+      - docs
+
+checksum:
+  name_template: checksums.txt
+
+# One SPDX document per archive, from syft, which the release workflow puts on
+# PATH. It reads the binary's own build graph, so it must report no
+# dependencies -- the claim docs/installing.md makes about go.mod's
+# staticcheck-only requires.
+sboms:
+  - artifacts: archive
+
+release:
+  prerelease: auto
