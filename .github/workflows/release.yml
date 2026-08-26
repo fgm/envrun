@@ -19,8 +19,13 @@ jobs:
   # a snapshot needs none of the release job's write permissions,
   # and granting them to a job that runs on pull_request would hand them
   # to a same-repo branch that has passed no review yet.
+  #
+  # Both guards test the ref rather than the event, so that adding a trigger
+  # -- `branches: [main]`, say -- cannot turn a merge into a release: the
+  # tag-only filter on `push` would otherwise be the sole thing keeping
+  # `event_name == 'push'` equivalent to "on a tag", in another part of the file.
   snapshot:
-    if: github.event_name != 'push'
+    if: startsWith(github.ref, 'refs/tags/v') == false
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -72,7 +77,7 @@ jobs:
         esac
 
   release:
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write      # create the release and upload its assets
