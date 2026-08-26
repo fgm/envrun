@@ -7,6 +7,11 @@
 # Created by "make cover". Only its *.out contents match a rule below, so the
 # directory itself needs one: anything else written there would be committed.
 /coverage/
+# Created by "goreleaser release". Beyond not belonging in the tree, an
+# unignored dist/ would make every release build report itself "+dirty":
+# Go's VCS stamp counts untracked files, and that stamp is the artifact's
+# only version identity.
+/dist/
 
 # Binaries for programs and plugins
 *.exe

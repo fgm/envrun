@@ -1,0 +1,6 @@
+# The GoReleaser that .github/workflows/release.yml builds with, in asdf/mise
+# format, which is the only shape goreleaser-action's version-file input reads.
+# It lives here rather than in the workflow's `with:` because Dependabot sees
+# `uses:` refs and go.mod, never an action input: .github/workflows/update.yml
+# is what moves this line.
+goreleaser 2.18.0
