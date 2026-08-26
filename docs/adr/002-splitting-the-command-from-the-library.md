@@ -262,6 +262,12 @@ It reports through two package-level helpers, `fail(err)` and `note(format, args
 writing to `log`'s default logger with the flags cleared.
 Two shapes, one destination, no levels.
 
+**That covers diagnostics, not everything envrun writes.**
+Output the user *asked for* — `-h`'s usage today, `-version` later —
+goes to standard output and carries no prefix,
+because it is the command's product rather than a report about it,
+and a caller redirecting it wants it apart from the diagnostics.
+
 **The `log` package with its flags cleared, not `slog`.**
 That is what is already in place, and what stays:
 the prefix lives in the format string, the destination is `log`'s own default,
@@ -463,6 +469,8 @@ it may name the variable and the lines, never either value.
 - **The CLI keeps `log`**, flags cleared, through the two helpers it already has,
   emitting plain prefixed lines on standard error rather than structured records.
   `slog` is declined and the package-level logger kept.
+  Amended by #46: that governs diagnostics, and requested output such as `-h`'s
+  usage goes to standard output instead.
   See *Who prints, and how*.
 
 - **Duplicate detection lands with issue #3**, which already asks for it:

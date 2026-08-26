@@ -13,6 +13,9 @@ import (
 )
 
 const (
+	// AppName is the name of the application, regardless of its invocation.
+	AppName = "envrun"
+
 	// commentRxS matches comment lines.
 	commentRxS = `^[\s]*#`
 	// nameRxS is much tighter than Posix, which accepts anything but NUL and '=',

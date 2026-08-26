@@ -76,17 +76,19 @@ so the demo cannot drift from the documented behaviour.
 ## Exit status
 
 The command reports for itself.
+Apart from `-h`, which prints usage on standard output and exits `0`,
 `envrun` has statuses only for its own failures, before the command starts,
 following the convention of coreutils `env`, `timeout` and `nohup`:
 
 - `125`: `envrun` itself failed — the environment file could not be read,
-  or no command was given
+  a flag was not understood, or no command was given
 - `126`: the command exists but could not be executed
 - `127`: the command could not be found
 
 A command exiting `125` itself is indistinguishable by status alone,
 so standard error carries the answer:
 every failure of `envrun`'s own is prefixed `envrun failed:`.
+A `0` from `-h` carries no such line, having failed at nothing.
 The rest, and the Windows divergence, is in
 [Exit status and platform scope](docs/exit-status.md).
 

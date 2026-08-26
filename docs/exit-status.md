@@ -11,12 +11,14 @@ On \*nix there is no `envrun` left once it starts,
 so its status, including death by a signal,
 reaches the caller unchanged and untranslated.
 
+Apart from `-h`, which prints usage on standard output and exits `0`
+without reading the environment or running anything,
 `envrun` has statuses only for its own failures, before the command starts.
 They follow the convention used by coreutils `env`, `timeout` and `nohup`,
 which keeps them out of the range a command is likely to use:
 
 - `125`: `envrun` itself failed — the environment file could not be read,
-  or no command was given
+  a flag was not understood, or no command was given
 - `126`: the command exists but could not be executed
 - `127`: the command could not be found
 
@@ -30,8 +32,10 @@ because every failure of `envrun`'s own names the process that failed:
 envrun failed: reading .env: open .env: no such file or directory
 ```
 
-That line is present exactly when the status is `envrun`'s;
-where it is absent, the status belongs to the command.
+Among `125`, `126` and `127` that line is present exactly when the status is
+`envrun`'s; where it is absent, the status belongs to the command.
+The qualifier matters because `-h` is envrun's own `0` and carries no such line:
+it did not fail, and nothing ran.
 
 `envrun` starts what the operating system can start, and no more:
 a file with the execute bit but no shebang and no loadable format reports `126`,
