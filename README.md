@@ -3,7 +3,7 @@
 [![GoDoc](https://pkg.go.dev/badge/github.com/fgm/envrun)](https://pkg.go.dev/github.com/fgm/envrun)
 [![CI](https://github.com/fgm/envrun/actions/workflows/tests.yml/badge.svg)](https://github.com/fgm/envrun/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/fgm/envrun/branch/main/graph/badge.svg?token=8YYX1B720M)](https://codecov.io/gh/fgm/envrun)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fgm/envrun/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fgm/envrun)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/fgm/envrun/badge)](https://scorecard.dev/viewer/?uri=github.com/fgm/envrun)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14232/badge)](https://www.bestpractices.dev/projects/14232)
 
 The `envrun` command runs any command with default environment variables taken from a file,
@@ -68,6 +68,8 @@ A shell sourcing the same file would substitute instead,
 so keep values plain if both read it.
 The format, and what it refuses to carry, is in
 [The environment file](docs/environment-file.md).
+
+In a clone, `make build` writes the binary to `bin/envrun`.
 
 `make demo` builds a file from the parsing fixtures in `env/testdata/` and runs `env` against it.
 Those fixtures are what the test suite asserts against,

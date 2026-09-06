@@ -3,10 +3,11 @@
 # A public repo also pays twice: contributors need a new tool, and CI,
 # which pins every action to a SHA, gains unpinned supply-chain surface.
 
-all: lint build
+all: lint test build
 
-GO       := go
+BINDIR   := bin
 COVERDIR := coverage
+GO       := go
 PACKAGES := ./...
 
 # If _RAW_GOBIN is empty, take the first element in _RAW_GOPATH
@@ -23,7 +24,7 @@ GOBIN := $(if $(_RAW_GOBIN),$(_RAW_GOBIN),$(firstword $(subst :, ,$(subst ;, ,$(
 DEMO_ENV := .env.demo
 
 # Only the demo's own variables are shown: "env" prints the whole environment,
-# so an unfiltered demo leaks whatever secrets the caller happens to export.
+# so an unfiltered demo would leak whatever secrets the caller happens to export.
 demo: $(DEMO_ENV)
 	@sed -nE 's/^[[:space:]]*([^#=[:space:]][^=]*[^=[:space:]]|[^#=[:space:]])[[:space:]]*=.*/^\1=/p' $(DEMO_ENV) > $(DEMO_ENV).names
 	@LOCAL=demo $(GO) run . -f $(DEMO_ENV) env | grep -f $(DEMO_ENV).names | sort
@@ -32,7 +33,7 @@ demo: $(DEMO_ENV)
 $(DEMO_ENV): $(wildcard env/testdata/pass-*.env)
 	cat $^ > $@
 
-.PHONY: build clean cover demo install lint modernize test
+.PHONY: all build clean cover demo install lint modernize test
 
 lint: modernize
 	$(GO) tool staticcheck -checks=all $(PACKAGES)
@@ -46,19 +47,21 @@ cover:
 	mkdir -p $(COVERDIR)
 	# This runs the benchmarks just once, as unit tests, for coverage reporting only.
 	# It does not replace running "make bench".
-	$(GO) test -v -race -run=. -coverprofile=$(COVERDIR)/cover.out -covermode=atomic $(PACKAGES)
+	$(GO) test -v -race -coverprofile=$(COVERDIR)/cover.out -covermode=atomic $(PACKAGES)
 	$(GO) tool cover -html=$(COVERDIR)/cover.out
 
 test:
 	# This includes the fuzz tests in unit test mode
 	$(GO) test -race $(PACKAGES)
 
-build: test
-	$(GO) build $(PACKAGES)
+# go build discards its result when handed more than one package,
+# so $(PACKAGES) would check that the command builds without ever producing it.
+build:
+	$(GO) build -o $(BINDIR)/ .
 
-install: build
+install: test build
 	$(GO) install .
 
 clean:
 	@echo GOBIN: $(GOBIN)
-	rm -fr $(COVERDIR) $(DEMO_ENV) envrun $(GOBIN)/envrun
+	rm -fr $(COVERDIR) $(DEMO_ENV) $(BINDIR)/envrun $(GOBIN)/envrun

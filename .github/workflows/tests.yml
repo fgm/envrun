@@ -30,6 +30,12 @@ jobs:
     - name: Lint
       run: make lint
 
+    # A zero exit does not prove a binary exists:
+    # widened to ./..., go build checks the command and writes nothing.
+    # Only the artifact proves it built.
+    - name: Build
+      run: make build && test -x bin/envrun
+
     - name: Test and cover
       # We don't need the benchmarks to run for long, just enough for coverage.
       run: mkdir -p coverage; make cover
