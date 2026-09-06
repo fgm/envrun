@@ -265,35 +265,48 @@ func parseReader(r io.Reader) (Vars, []Problem, error) {
 // alongside the error whenever a file was opened at all. Only [Result.Env] is
 // nil, since a rejected file declares nothing.
 func Load(paths ...string) (Result, error) {
+	file, path, err := openFirst(paths)
+	if err != nil {
+		return Result{}, err
+	}
+	return loadFile(file, path)
+}
+
+// openFirst opens the first candidate that exists, and reports which one that
+// was: with a search path, the caller cannot otherwise tell.
+//
+// The file is returned open, and closing it is the caller's job from here.
+func openFirst(paths []string) (*os.File, string, error) {
 	if len(paths) == 0 {
 		paths = []string{DefaultPath}
 	}
 
-	var (
-		file    *os.File
-		path    string
-		lastErr error
-	)
+	var lastErr error
 	for _, candidate := range paths {
 		f, err := os.Open(candidate)
 		if err == nil {
-			file, path = f, candidate
-			break
+			return f, candidate, nil
 		}
 		// Only a missing file is a miss. A candidate that exists but cannot be
 		// read — no permission, a directory — is a problem to report rather than
 		// a reason to look further: silently falling through to the next
 		// candidate would hide it.
 		if !errors.Is(err, iofs.ErrNotExist) {
-			return Result{}, fmt.Errorf("reading %s: %w", candidate, err)
+			return nil, "", fmt.Errorf("reading %s: %w", candidate, err)
 		}
 		lastErr = err
 	}
-	if file == nil {
-		return Result{}, fmt.Errorf("reading %s: %w", strings.Join(paths, ", "), lastErr)
-	}
+	return nil, "", fmt.Errorf("reading %s: %w", strings.Join(paths, ", "), lastErr)
+}
 
-	v, problems, err := parseReader(file)
+// loadFile reads an opened environment file, closes it, and reports what it
+// declared. path names the file, for the Result and any [ParseError] to carry.
+//
+// It takes an interface where its only caller holds an *os.File, because the
+// close it has to report on is the one thing a real file will not do: a
+// descriptor opened read-only has nothing left to fail at.
+func loadFile(rc io.ReadCloser, path string) (Result, error) {
+	v, problems, err := parseReader(rc)
 	// Closed here rather than deferred: the command hands over with syscall.Exec,
 	// which runs no deferred function, so this package must not leave the close
 	// to one either.
@@ -302,7 +315,7 @@ func Load(paths ...string) (Result, error) {
 	// give has already been read, so refusing to run the command over it would
 	// withhold a working environment for a problem that no longer affects it.
 	var notes []Note
-	if cErr := file.Close(); cErr != nil {
+	if cErr := rc.Close(); cErr != nil {
 		notes = append(notes, CloseError{Err: cErr})
 	}
 	// Path and Notes survive a failure, and only Env does not: a file that was
