@@ -24,8 +24,8 @@ import (
 // so the shape of exec_unix.go cannot be expressed there and never will be.
 // Supervision is the only available shape rather than a fallback,
 // which is why the transparency v0.2.0 promises is *nix-only.
-// What supervision could still gain on Windows —
-// an allowlist of console control events, and job objects with kill-on-close —
+// What supervision could still gain on Windows -
+// an allowlist of console control events, and job objects with kill-on-close -
 // is issue #44.
 //
 // The remaining platforms it covers, js/wasm and wasip1, cannot start a process at all.

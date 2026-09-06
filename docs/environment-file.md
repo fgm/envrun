@@ -17,7 +17,7 @@ override the ones the file defines.
   and any name outside `[_A-Za-z][-._A-Za-z0-9]*`.
   - One bad line fails the whole file,
     because running a command on configuration the operator meant to set is worse than not running it.
-  - This half is loud — `envrun` exits `125` before the command starts,
+  - This half is loud - `envrun` exits `125` before the command starts,
     naming the line at fault.
     A file it cannot read at all, such as one holding a line over 64 KiB,
     fails the same way but without a position.
@@ -32,12 +32,12 @@ DSN=postgres://${INSTANCE}/db
   - A shell sourcing the same file would substitute, or execute,
     and hand the command something else entirely.
   - **This half is silent**: both readers succeed, and the values simply differ.
-    If a file is read both ways — sourced by a launcher,
+    If a file is read both ways - sourced by a launcher,
     and passed to `envrun` elsewhere, the two diverge invisibly.
     Keep values plain, or read the file one way only.
 
 A line without `=` is refused here even though the *inherited* environment may hold one,
-and it is carried through — see below. 
+and it is carried through - see below. 
 The rule for the file is simply that every line must declare a variable;
 a line that declares none is refused rather than passed on,
 because passing it on would leave the variable it was meant to set absent,
@@ -66,6 +66,6 @@ The same shape of row in the *file* fails it instead,
 which is not an inconsistency: what differs is the baseline.
 An inherited row would have reached the command with or without `envrun`,
 so carrying it is faithful.
-A file line would have reached nothing at all, since nothing else reads the file — 
+A file line would have reached nothing at all, since nothing else reads the file - 
 so there is no behaviour to preserve, only an intent that did not take effect,
 and saying so is more useful than passing on a row no name can match.

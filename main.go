@@ -38,7 +38,7 @@ func parseArgs(args []string, stdW, errW io.Writer) (string, []string, error) {
 
 	// Declared rather than left to flag.
 	// Declaring keeps flag from writing usage of its own, which it would send to one destination,
-	// for both a help request and a parse failure — and those need different ones.
+	// for both a help request and a parse failure - and those need different ones.
 	showHelp := fs.Bool("h", false, "Print this message on standard output and exit")
 	fs.BoolVar(showHelp, "help", false, "Alias for -h")
 

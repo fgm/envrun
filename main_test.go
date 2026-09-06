@@ -31,7 +31,7 @@ import (
 // helperVar reaches the helper through the environment *file*, never the inherited environment:
 // envrun passes its own environment on,
 // so a helper role set on the envrun process would be taken by that process instead of by its command.
-// mainVar takes the opposite route for the same reason —
+// mainVar takes the opposite route for the same reason -
 // it must reach envrun and, were the helper switch not first, it would reach the helper too.
 const (
 	helperVar = "ENVRUN_TEST_HELPER"
@@ -140,8 +140,8 @@ func TestPrefixesMatchTheDocumentation(t *testing.T) {
 // where a diagnostic could be missing for any number of reasons;
 // this one checks the two lines themselves,
 // so a change to their wording fails here first and says which contract it broke.
-// note() is the half with no *nix caller in the tests —
-// its only one is a close failure —
+// note() is the half with no *nix caller in the tests -
+// its only one is a close failure -
 // and the half a Windows regression would show up in.
 func TestDiagnosticsNameEnvrun(t *testing.T) {
 	var buf bytes.Buffer
@@ -197,8 +197,8 @@ func TestCommandExitStatus(t *testing.T) {
 			var stderr bytes.Buffer
 			cmd.Stderr = &stderr
 			// A non-zero status is the point here,
-			// so only a failure to start at all —
-			// leaving no ProcessState behind — is a test failure.
+			// so only a failure to start at all -
+			// leaving no ProcessState behind - is a test failure.
 			if err := cmd.Run(); err != nil && cmd.ProcessState == nil {
 				t.Fatalf("failed running envrun: %v", err)
 			}

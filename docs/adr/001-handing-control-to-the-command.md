@@ -26,7 +26,7 @@ $ kill -TERM <envrun pid>
 Terminal use hides this,
 because Ctrl-C signals the whole foreground process group
 and so reaches the child directly anyway.
-The gap shows when a signal is directed at the envrun process alone —
+The gap shows when a signal is directed at the envrun process alone -
 a supervisor, a `just` target, or a plain `kill <pid>`.
 
 The goal stated while preparing the fix reframes what a fix should achieve:
@@ -45,11 +45,11 @@ They are recorded here because they are expensive to reproduce
 and easy to misremember,
 not because they all favour one option.
 
-### 1. Supervise, and forward signals — the issue as filed
+### 1. Supervise, and forward signals - the issue as filed
 
 Register `signal.Notify`, relay to the child, and exit `128+signo` when the child dies of a signal.
 
-- **A blanket `signal.Notify(c)` delivers SIGURG** — 21 of them in one busy run.
+- **A blanket `signal.Notify(c)` delivers SIGURG** - 21 of them in one busy run.
   Go's runtime uses SIGURG for asynchronous preemption, so "forward everything" forwards runtime noise into the child.
 - **`Notify` disables default behaviour at registration**,
   which makes a denylist impossible rather than merely awkward:
@@ -58,7 +58,7 @@ Register `signal.Notify`, relay to the child, and exit `128+signo` when the chil
   - so the set of signals to handle has to be an allowlist,
     and the allowlist is exactly the thing that will be found incomplete later.
 - **Some signals cannot be relayed at all.** 
-  - `kill -SEGV` with `Notify` registered still dies through `runtime.throw` — `sigcode=2` (`SI_USER`),
+  - `kill -SEGV` with `Notify` registered still dies through `runtime.throw` - `sigcode=2` (`SI_USER`),
     register dump, exit 2. 
   - SIGSEGV, SIGBUS and SIGFPE therefore cannot be forwarded; 
   - SIGKILL and SIGSTOP cannot be caught in the first place.
@@ -76,7 +76,7 @@ The allowlist is unavoidable,
 and three signals cannot be relayed even in principle,
 so any version of this ships with a known-incomplete taxonomy.
 
-### 2. Replace the process — `syscall.Exec`
+### 2. Replace the process - `syscall.Exec`
 
 After `execve` there is no wrapper left: signals, exit status, 
 stdio and the controlling terminal all belong to the command,
@@ -103,7 +103,7 @@ because it *is* the process that was envrun.
   SigCgt: 0000000000000400
   ```
 
-  - `SigBlk` and `SigIgn` are empty, so nothing is handed to the command blocked or ignored — 
+  - `SigBlk` and `SigIgn` are empty, so nothing is handed to the command blocked or ignored - 
     and that held across *two* chained `execve` calls,
     because `sh -c` with a single command execs straight into `grep`.
   - The `SigCgt` bit is signal 11, SIGSEGV, installed by `grep` itself after exec: 
@@ -119,7 +119,7 @@ because it *is* the process that was envrun.
   Measured 2026-08-23 under `go test -covermode=atomic -coverprofile`:
   `runtime/coverage.WriteMetaDir` returns
   "no meta-data available (binary not built with -cover?)",
-  and `WriteCountersDir` reports "invoked for program built with -covermode=<invalid>" —
+  and `WriteCountersDir` reports "invoked for program built with -covermode=<invalid>" -
   in the helper process and the test process alike.
   Those APIs work only in a binary built with `go build -cover`.
   `make cover` passes `-covermode=atomic`,
@@ -128,20 +128,20 @@ because it *is* the process that was envrun.
   the in-process ENOEXEC test *executes* the `syscall.Exec` statement,
   since exec returns on failure,
   and statement coverage cannot tell the success half of a statement from the failure half.
-  A subprocess test is still wanted for **behaviour** —
-  that a child's exit 42 passes through —
+  A subprocess test is still wanted for **behaviour** -
+  that a child's exit 42 passes through -
   but it never needed to reach the coverage profile.
 
 **Verdict: chosen, on \*nix.** See *Decision*.
 
-### 3. Fork and reap by hand — `syscall.ForkExec` with our own `Wait4`
+### 3. Fork and reap by hand - `syscall.ForkExec` with our own `Wait4`
 
 The only option that can observe job-control stops,
 and the only one that gives full control over process groups and death signals.
 
 It is also the largest: it takes over responsibilities `os/exec` currently handles correctly,
 for a capability nothing has asked for.
-Recorded here so that it is visibly declined rather than overlooked —
+Recorded here so that it is visibly declined rather than overlooked -
 it is a reasonable design for a process supervisor, but envrun is not one at this stage in its life.
 
 **Verdict: declined at this stage in the project's lifetime, not missed.**
@@ -164,13 +164,13 @@ This is what the installation advice has to answer to:
 the transparency envrun offers is only as good as the layer it is invoked through.
 
 - **`go run` does not forward SIGTERM.**
-  Reproduced live: the child is orphaned to PID 1 — the very failure #35 reports.
+  Reproduced live: the child is orphaned to PID 1 - the very failure #35 reports.
 - **`go tool` forwards only `{HUP, INT, QUIT, TERM}`** (`cmd/go/internal/tool/signal.go:14`)
   and **remaps a tool's signal death to exit 1** (`cmd/go/internal/tool/tool.go:429-433` in Go 1.27.0).
 
 So under `go tool envrun`, exit-status transparency is lost at the `go` layer,
 no matter how faithful envrun is, and USR1, USR2 and WINCH still orphan.
-This is not an argument against exec — supervision through the same layer is strictly worse.
+This is not an argument against exec - supervision through the same layer is strictly worse.
 
 **It is an argument about installation, and one route already avoids it.**
 `go install github.com/fgm/envrun@latest` produces a binary in `$GOBIN`
@@ -187,13 +187,13 @@ installs the version that module's `go.mod` already pins,
 so a consumer can hold the pin *and* get a wrapper-free binary.
 
 - **`go tool envrun`** re-resolves the pin on every run, 
-  so the version can never drift from `go.mod` — but the `go` process interposes,
+  so the version can never drift from `go.mod` - but the `go` process interposes,
   forwarding four signals and flattening signal death to exit 1.
-- **A `go install`ed binary** is fully transparent — but it pins at install time,
+- **A `go install`ed binary** is fully transparent - but it pins at install time,
   nothing re-checks it afterward, and `GOBIN` is shared,
   so one project's install silently changes which envrun every other project gets.
-- **A project-local build** — `go build -o bin/ github.com/fgm/envrun` 
-  from inside the consuming module — is transparent *and* fixes the drift instead of relocating it.
+- **A project-local build** - `go build -o bin/ github.com/fgm/envrun` 
+  from inside the consuming module - is transparent *and* fixes the drift instead of relocating it.
   It resolves through the same `go.mod` pin, it does not touch `GOBIN`,
   so projects pinning different versions no longer fight,
   and because the output is in the project it can be a build target with `go.mod` as its prerequisite:
@@ -208,7 +208,7 @@ so a consumer can hold the pin *and* get a wrapper-free binary.
   Verified 2026-08-23: `go build -o <dir>/` creates the directory if absent,
   so no `.gitkeep` is needed;
   and building a tool dependency into a directory from a consuming module works as expected.
-  **Ignore the built binary, not the directory** — 
+  **Ignore the built binary, not the directory** - 
   `bin/` is frequently a tracked source directory rather than a scratch one
   (one consuming project keeps six shell scripts and a `//go:build ignore` helper there),
   so `/bin/envrun` in `.gitignore`, never `bin/`.
@@ -223,7 +223,7 @@ A README that says "prefer `go install`" without "and reinstall when you bump th
 
 Note also that `go tool` remaps only `ExitCode() == -1`, that is death by signal;
 an ordinary non-zero exit passes through untouched. So a consumer needing
-exit-status fidelity for ordinary failures — not signal transparency — is served
+exit-status fidelity for ordinary failures - not signal transparency - is served
 by `go tool` plus a current pin, and need not change invocation at all.
 
 #41 is therefore a matter of reach rather than of feasibility: signed release
@@ -239,8 +239,8 @@ Process creation goes through `CreateProcess`,
 which always produces a *new* process with a new PID,
 so "replace yourself with the command" cannot be expressed.
 
-Its signal and exit-status model differ too — console control events rather than POSIX signals,
-and plain exit codes with no signal encoding — so `128+signo` has no meaning there either.
+Its signal and exit-status model differ too - console control events rather than POSIX signals,
+and plain exit codes with no signal encoding - so `128+signo` has no meaning there either.
 
 ### Classifying a failure to start
 
@@ -259,7 +259,7 @@ where execve reports ENOEXEC and envrun stops at 126.
 envrun becomes the command rather than supervising it,
 so the transparency it offers is the process's own rather than something it emulates.
 
-**Windows keeps `os/exec`**, the shape not being expressible there —
+**Windows keeps `os/exec`**, the shape not being expressible there -
 see *Windows has no fork/exec pair*.
 Supervision is not a fallback on that platform, it is the only available shape,
 and it will not become available later.
@@ -269,7 +269,7 @@ Only `run`, the one step that starts the command, has two implementations,
 selected by build tag; the program itself carries no constraint.
 Tagging the program instead, with a stub `main` refusing to run off \*nix,
 would turn a working platform into a hard failure
-in order to improve a different one —
+in order to improve a different one -
 envrun builds and works on windows/amd64 today, `os/exec` being portable.
 
 **This release is therefore \*nix-only in what it guarantees**,
@@ -304,11 +304,11 @@ the platform is supported, the transparency is not.
   - `tests.yml` runs a Windows job, so a regression in any of it fails visibly.
 - **Testability.** Exec never returns on success,
   so the tests split in two, and the split follows the statuses.
-  - The pre-exec failures — 125, 126, 127 — stay **in process**,
+  - The pre-exec failures - 125, 126, 127 - stay **in process**,
     and are the ones #18 lists as uncovered.
     ENOEXEC reaches the `syscall.Exec` call in process;
     so do EINVAL (a NUL in a value, demonstrated) and, on linux,
-    ETXTBSY and E2BIG — ENOEXEC is not the only one.
+    ETXTBSY and E2BIG - ENOEXEC is not the only one.
   - Everything past the point where the command starts needs a **subprocess**,
     and the test binary is its own: it re-enters as envrun,
     or as a helper reporting one fact about the process it runs in.
@@ -319,7 +319,7 @@ the platform is supported, the transparency is not.
   - The subprocess half contributes nothing to the coverage profile, and cannot:
     the flush APIs need a `go build -cover` binary, as measured above.
     It is there for behaviour, not for the percentage.
-- **`exitStatus` needs three explicit arms** — `ErrNotFound`, `fs.ErrPermission`,
+- **`exitStatus` needs three explicit arms** - `ErrNotFound`, `fs.ErrPermission`,
   and `EISDIR` and `ENOEXEC` each on its own,
   for the reason measured under *Classifying a failure to start*.
 
@@ -327,7 +327,7 @@ the platform is supported, the transparency is not.
 
 - **envrun stops being observable once the command starts.** 
   - No wrapper means no place to log, count, time, or retry.
-  - Anything of that kind must happen before `execve` or not at all —
+  - Anything of that kind must happen before `execve` or not at all -
     which also means #3's verbose flag can only ever report on the environment,
     never on the command's behaviour.
 - **The README gets shorter, not longer.** The reasoning moves here, 

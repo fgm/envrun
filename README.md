@@ -13,7 +13,7 @@ Variables already present in the environment override the ones in the file.
 The command may have arguments, and it will be looked up in the `$PATH` if its name does not contain a `/`.
 
 Many programs, and most IDEs in their run configurations, can read a `.env` file themselves.
-`envrun` is for everywhere else — CI/CD, a `just` or `make` target, a plain shell —
+`envrun` is for everywhere else - CI/CD, a `just` or `make` target, a plain shell -
 where the program to be run cannot.
 
 If the program is yours and written in Go, you need no wrapper at all:
@@ -27,7 +27,7 @@ On \*nix, `envrun` does not wrap the command:
 it **becomes** it, through `execve`, keeping the same process.
 Signals, exit status, standard streams and the controlling terminal
 are the command's own, exactly as if it had read the environment file itself.
-Windows has no equivalent and keeps a supervising parent —
+Windows has no equivalent and keeps a supervising parent -
 see [Exit status and platform scope](docs/exit-status.md).
 
 ## Installing
@@ -62,7 +62,7 @@ A run with no defaults to add is a run that does not need `envrun`,
 so a missing file is a failure rather than a silent pass-through:
 configuration that was meant to be there is worth stopping for.
 
-`envrun` reads the file, it never sources it — no expansion, no execution,
+`envrun` reads the file, it never sources it - no expansion, no execution,
 so `DSN=postgres://${INSTANCE}/db` reaches the command exactly as written.
 A shell sourcing the same file would substitute instead,
 so keep values plain if both read it.
@@ -82,7 +82,7 @@ Apart from `-h`, which prints usage on standard output and exits `0`,
 `envrun` has statuses only for its own failures, before the command starts,
 following the convention of coreutils `env`, `timeout` and `nohup`:
 
-- `125`: `envrun` itself failed — the environment file could not be read,
+- `125`: `envrun` itself failed - the environment file could not be read,
   a flag was not understood, or no command was given
 - `126`: the command exists but could not be executed
 - `127`: the command could not be found
@@ -99,14 +99,14 @@ The rest, and the Windows divergence, is in
 None at build or run time: `envrun` uses only the standard library.
 The modules in `go.mod` belong to `staticcheck`, used for linting.
 Each release archive ships an SPDX SBOM built from the binary itself,
-so the claim is checkable without a toolchain —
+so the claim is checkable without a toolchain -
 see the [Installing](docs/installing.md#dependencies) document.
 
 ## Related tools
 
 `envrun` optimises for being invisible.
-The command runs exactly as if it had read the file itself —
-same process, same signals, same exit status, same terminal —
+The command runs exactly as if it had read the file itself -
+same process, same signals, same exit status, same terminal -
 and nothing in the file is ever expanded or executed,
 so a value cannot mean one thing to a shell and another to the program.
 No dependencies, standard library only,

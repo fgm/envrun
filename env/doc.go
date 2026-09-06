@@ -4,7 +4,7 @@
 // The command must not put the variables into its own process:
 // what it needs is the set to hand to the command it runs,
 // which under ADR-001 becomes that command's environment across execve.
-// A Go program importing this package wants the opposite —
+// A Go program importing this package wants the opposite -
 // the variables in its own process, with no wrapper process at all.
 //
 // So there are two entry points over one core:
@@ -19,7 +19,7 @@
 // would interleave non-JSON lines into a JSON stream.
 //
 // It is deliberately not a general .env package.
-// The file format is narrow — see [ParseError] for what it refuses and why —
+// The file format is narrow - see [ParseError] for what it refuses and why -
 // and a feature is not adopted here on the grounds that other .env libraries carry it.
 // See docs/adr/002-splitting-the-command-from-the-library.md.
 package env

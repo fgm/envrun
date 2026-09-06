@@ -18,7 +18,7 @@ import (
 //
 // Each fixture isolates one behaviour, so that a failure names one cause.
 // The parser does accumulate problems and reports them together,
-// so a fixture could carry several — it just would not say which one broke.
+// so a fixture could carry several - it just would not say which one broke.
 func TestLoad(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -289,7 +289,7 @@ func TestLoadDiscovery(t *testing.T) {
 // Only a missing candidate is a miss. One that exists but cannot be read is a
 // problem to report: falling through to the next would leave the operator
 // running against a file they did not mean to use, with nothing said about the
-// one they did. So the assertion is that an error comes back at all — reaching
+// one they did. So the assertion is that an error comes back at all - reaching
 // the fallback is exactly what returns nil.
 //
 // Neither case uses a mode: root ignores the permission bits, and CI images run

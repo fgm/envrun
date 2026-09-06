@@ -37,7 +37,7 @@ const DefaultPath = ".env"
 //
 // It is a map because nothing here needs an order:
 // execve takes an array the kernel does not order,
-// and the one place order matters — reporting — can sort at presentation time,
+// and the one place order matters - reporting - can sort at presentation time,
 // where the caller knows what it is sorting for.
 type Vars map[string]string
 
@@ -86,7 +86,7 @@ type Result struct {
 //
 // If names overlap, the argument wins over the receiver, as in PHP array_merge.
 // The command's merge is fileEnv.Merge(inherited), so the inherited environment
-// overrides the file — see PR #6 for the request to reverse that.
+// overrides the file - see PR #6 for the request to reverse that.
 func (v Vars) Merge(w Vars) Vars {
 	res := make(Vars, len(v)+len(w))
 	maps.Copy(res, v)
@@ -247,7 +247,7 @@ func parseReader(r io.Reader) (Vars, []Problem, error) {
 // An importer wants [Apply] instead.
 //
 // paths is a search path, not a list to merge: the first candidate that exists
-// wins, the rest are never read, and composition — .env then .env.local — stays
+// wins, the rest are never read, and composition - .env then .env.local - stays
 // a separate feature rather than a second meaning for this parameter. With no
 // path at all it looks for [DefaultPath] in the working directory. The command's
 // -f flag overrides the search by naming its one candidate.
@@ -257,8 +257,8 @@ func parseReader(r io.Reader) (Vars, []Problem, error) {
 //   - the file's contents, as a [*ParseError],
 //     whose problems are reachable one by one with errors.AsType;
 //   - reaching the file at all, as an *io/fs.PathError.
-//     errors.Is against fs.ErrNotExist then separates "no file" —
-//     which may be no error at all for a caller with an optional one —
+//     errors.Is against fs.ErrNotExist then separates "no file" -
+//     which may be no error at all for a caller with an optional one -
 //     from a file that is there but could not be read.
 //
 // A failing Result is not empty: [Result.Path] and [Result.Notes] are returned
@@ -272,8 +272,8 @@ func Load(paths ...string) (Result, error) {
 	return loadFile(file, path)
 }
 
-// openFirst opens the first candidate that exists, and reports which one that
-// was: with a search path, the caller cannot otherwise tell.
+// openFirst opens the first candidate that exists, and reports which one that was:
+// with just a search path, the caller could not tell.
 //
 // The file is returned open, and closing it is the caller's job from here.
 func openFirst(paths []string) (*os.File, string, error) {
@@ -287,10 +287,10 @@ func openFirst(paths []string) (*os.File, string, error) {
 		if err == nil {
 			return f, candidate, nil
 		}
-		// Only a missing file is a miss. A candidate that exists but cannot be
-		// read — no permission, a directory — is a problem to report rather than
-		// a reason to look further: silently falling through to the next
-		// candidate would hide it.
+		// Only a missing file is a miss.
+		// A candidate that exists but cannot be read - no permission, a directory -
+		// is a problem to report rather than a reason to look further:
+		// silently falling through to the next candidate would hide it.
 		if !errors.Is(err, iofs.ErrNotExist) {
 			return nil, "", fmt.Errorf("reading %s: %w", candidate, err)
 		}
@@ -299,12 +299,13 @@ func openFirst(paths []string) (*os.File, string, error) {
 	return nil, "", fmt.Errorf("reading %s: %w", strings.Join(paths, ", "), lastErr)
 }
 
-// loadFile reads an opened environment file, closes it, and reports what it
-// declared. path names the file, for the Result and any [ParseError] to carry.
+// loadFile reads an opened environment file, closes it,
+// and reports what it declared.
+// path names the file, for the Result and any [ParseError] to carry.
 //
-// It takes an interface where its only caller holds an *os.File, because the
-// close it has to report on is the one thing a real file will not do: a
-// descriptor opened read-only has nothing left to fail at.
+// It takes an interface where its only caller holds an *os.File,
+// because the close it has to report on is the one thing a real file will not do:
+// a descriptor opened read-only has nothing left to fail at.
 func loadFile(rc io.ReadCloser, path string) (Result, error) {
 	v, problems, err := parseReader(rc)
 	// Closed here rather than deferred: the command hands over with syscall.Exec,
@@ -337,13 +338,13 @@ func loadFile(rc io.ReadCloser, path string) (Result, error) {
 // spare them: an API that returned the merge-and-apply loop to its caller would
 // not be simplifying anything.
 //
-// It mutates process state, so it belongs at the top of main, or in TestMain,
+// It mutates the process state, so it belongs at the top of main, or in TestMain,
 // before anything concurrent starts.
 // Go-to-Go access is safe on its own, since syscall.Setenv and Getenv share a
 // mutex. What that mutex does not reach is:
 //
-//   - a C library calling getenv on another thread;
-//   - any reader that captured a value before the change, and never learns of it.
+//   - A C library calling getenv on another thread;
+//   - Any reader that captured a value before the change and never learns of it.
 //
 // There is no concurrency-safe way to mutate a process environment.
 // Callers who need one want [Load], which touches nothing

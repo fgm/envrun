@@ -1,7 +1,8 @@
 // This file is in package env, where every other test file is in env_test,
-// because the property it covers is unreachable from outside: Load opens the
-// file itself, read-only, and a descriptor with no write-back has nothing left
-// to fail at on Close. loadFile takes a reader precisely so a fake can fail.
+// because the property it covers is unreachable from outside:
+// Load opens the file itself, read-only,
+// and a descriptor with no write-back has nothing left to fail at on Close.
+// loadFile takes a reader precisely so a fake can fail.
 package env
 
 import (
@@ -21,8 +22,8 @@ type failingCloser struct {
 func (f failingCloser) Close() error { return f.err }
 
 // TestLoadFileCloseError covers what a failed close must not cost the caller:
-// everything the file had to give has already been read, so the close failure
-// travels as a Note beside the result rather than replacing it.
+// everything the file had to give has already been read,
+// so the close failure travels as a Note beside the result rather than replacing it.
 func TestLoadFileCloseError(t *testing.T) {
 	const path = "x.env"
 	cause := &fs.PathError{Op: "close", Path: path, Err: fs.ErrPermission}
@@ -54,8 +55,9 @@ func TestLoadFileCloseError(t *testing.T) {
 		if res.Env != nil {
 			t.Errorf("expected no environment beside an error, got %v", res.Env)
 		}
-		// The property this case exists for: the parse failure does not bury the
-		// unrelated finding the caller could still act on.
+		// The property this case exists for:
+		// the parse failure does not bury the unrelated finding
+		// the caller could still act on.
 		assertCloseNote(t, res, path, cause)
 	})
 }
