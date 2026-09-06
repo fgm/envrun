@@ -17,7 +17,7 @@ without reading the environment or running anything,
 They follow the convention used by coreutils `env`, `timeout` and `nohup`,
 which keeps them out of the range a command is likely to use:
 
-- `125`: `envrun` itself failed — the environment file could not be read,
+- `125`: `envrun` itself failed - the environment file could not be read,
   a flag was not understood, or no command was given
 - `126`: the command exists but could not be executed
 - `127`: the command could not be found
@@ -45,8 +45,8 @@ Choosing an interpreter is not `envrun`'s job.
 ## Platform scope
 
 The transparency above is \*nix-only, and permanently so.
-Windows has no fork/exec pair —
-`CreateProcess` always makes a new process with a new PID —
+Windows has no fork/exec pair -
+`CreateProcess` always makes a new process with a new PID -
 so "replace yourself with the command" cannot be expressed there.
 Windows is supported and tested:
 `envrun` builds and runs commands, standard input included,
@@ -61,7 +61,7 @@ Being still there, it also reports what it saw the command do:
 envrun: sh exited with status 42
 ```
 
-Prefixed `envrun:` and never `envrun failed:` —
+Prefixed `envrun:` and never `envrun failed:` -
 `envrun` did not fail, and the status is the command's.
 
 Why `execve` rather than forwarding signals from a wrapper is recorded in

@@ -8,8 +8,8 @@ import (
 
 // Why a line can be rejected.
 //
-// Sentinels rather than an enum, so a caller asks the question it actually has —
-// errors.Is(err, env.ErrInvalidName) —
+// Sentinels rather than an enum, so a caller asks the question it actually has -
+// errors.Is(err, env.ErrInvalidName) -
 // without needing to know that [Problem] or [ParseError] exist,
 // let alone how to walk them.
 // [ParseError] wraps every problem it collected,
@@ -39,9 +39,9 @@ var (
 // withhold a working environment for a problem that no longer affects it.
 //
 // It is also an error, the one note that genuinely reports a failure, so the
-// cause — an *io/fs.PathError, which names the file itself — stays reachable:
+// cause - an *io/fs.PathError, which names the file itself - stays reachable:
 //
-//	if e, ok := n.(error); ok && errors.Is(e, fs.ErrPermission) { … }
+//	if e, ok := n.(error); ok && errors.Is(e, fs.ErrPermission) { ... }
 type CloseError struct {
 	// Err is what Close returned.
 	Err error
@@ -57,7 +57,7 @@ func (e CloseError) Unwrap() error { return e.Err }
 
 // Problem locates one rejected line.
 //
-// It carries the line number and, where there was one to read, the name —
+// It carries the line number and, where there was one to read, the name -
 // and never the value.
 // A malformed line may hold a secret, and a caller printing what it is handed
 // must not be able to print that secret by accident.
@@ -93,7 +93,7 @@ func (p Problem) Unwrap() error { return p.Err }
 // because envrun is the only thing that reads the file:
 // a line it cannot honour would have reached nothing without it,
 // so passing that line over leaves the command running without the
-// configuration the operator meant to set — worse than not running it at all.
+// configuration the operator meant to set - worse than not running it at all.
 //
 // [FromEnviron] does the opposite with the same shape of row,
 // and the difference is the baseline rather than the format:
@@ -102,12 +102,12 @@ func (p Problem) Unwrap() error { return p.Err }
 // Two ways in, because callers want two different things. To ask whether a kind
 // of problem occurred at all:
 //
-//	if errors.Is(err, env.ErrInvalidName) { … }
+//	if errors.Is(err, env.ErrInvalidName) { ... }
 //
 // To count them, or to locate them in the file:
 //
 //	if perr, ok := errors.AsType[*env.ParseError](err); ok {
-//		for _, p := range perr.Problems { … }
+//		for _, p := range perr.Problems { ... }
 //	}
 //
 // The second is what [Unwrap] cannot serve: errors.As stops at the first match

@@ -11,8 +11,8 @@ import (
 
 // TestProblemError pins the rendered form of every kind.
 //
-// The messages are an output contract — the command prints them and the README
-// quotes their shape — so a change to the wording should fail here first and say
+// The messages are an output contract - the command prints them and the README
+// quotes their shape - so a change to the wording should fail here first and say
 // which one it broke, rather than surfacing as a mismatched substring elsewhere.
 func TestProblemError(t *testing.T) {
 	tests := []struct {

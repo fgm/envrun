@@ -19,7 +19,7 @@ import (
 // TestExecKeepsThePID covers the process replacement itself,
 // which is what issue #35 asks for.
 //
-// The repro in that issue — kill envrun and watch the command survive —
+// The repro in that issue - kill envrun and watch the command survive -
 // cannot be asserted directly without racing on whether an orphan is still around.
 // Identity can:
 // after execve the command *is* the process that was envrun,
@@ -48,7 +48,7 @@ func TestExecKeepsThePID(t *testing.T) {
 		t.Fatalf("parsing the reported PID: %v", err)
 	}
 	if want := cmd.Process.Pid; got != want {
-		t.Errorf("the command ran as PID %d, expected %d — envrun is still a wrapper", got, want)
+		t.Errorf("the command ran as PID %d, expected %d - envrun is still a wrapper", got, want)
 	}
 }
 
@@ -182,7 +182,7 @@ func TestRealMainErrnoClassification(t *testing.T) {
 // The shebang-less script is the deliberate divergence, and is asserted as one:
 // bash retries such a file under /bin/sh and runs it,
 // where execve reports ENOEXEC and envrun stops at 126.
-// envrun transports an environment, it does not choose an interpreter —
+// envrun transports an environment, it does not choose an interpreter -
 // but a change on either side should fail here rather than silently.
 func TestBashOnNotInvocable(t *testing.T) {
 	bash, err := exec.LookPath("bash")

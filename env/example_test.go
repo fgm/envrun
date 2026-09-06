@@ -18,7 +18,7 @@ import (
 //
 // They write their own file rather than reading testdata, because only go test
 // runs a binary with the package directory as its working directory. An example
-// is also compiled as a standalone program — by pkg.go.dev's Run button, say —
+// is also compiled as a standalone program - by pkg.go.dev's Run button, say -
 // where a relative path would resolve against somewhere else entirely.
 func writeEnv(body string) (path string, remove func()) {
 	dir, err := os.MkdirTemp("", env.AppName)

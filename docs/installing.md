@@ -81,7 +81,7 @@ which is often a tracked source directory.
 Both work, and both cost something the recipe above does not:
 
 - **`go tool github.com/fgm/envrun`** re-resolves `go.mod` on every run,
-  so the version can never drift —
+  so the version can never drift -
   but the `go` process stays between the caller and the command.
   It forwards four signals (`HUP`, `INT`, `QUIT`, `TERM`),
   and reports a command killed by any signal as exit 1.
@@ -95,7 +95,7 @@ Both work, and both cost something the recipe above does not:
   installs that module's pinned version, which fixes the pin but not the sharing.
 - **`go run`** interposes and does not forward `SIGTERM` at all.
 
-A download shares `go install`'s weakness — nothing re-checks it — and avoids
+A download shares `go install`'s weakness - nothing re-checks it - and avoids
 its sharing problem, since you decide where the binary lands.
 
 ## Dependencies

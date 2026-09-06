@@ -18,7 +18,7 @@
 //		Print the usage message on standard output and exit 0,
 //		without reading the environment or running a command.
 //
-// The file is read, never sourced — no expansion and no execution — so a value
+// The file is read, never sourced - no expansion and no execution - so a value
 // reaches the command exactly as written. Its variables are merged under the
 // inherited environment, so a name already exported wins over the file.
 //
