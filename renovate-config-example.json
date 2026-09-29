@@ -3,7 +3,6 @@
   "extends": ["config:recommended"],
   "repositories": [
     "fgm/envrun",
-    "fgm/untilMongod",
     "fgm/container",
     "fgm/drupal_redis_stats",
     "fgm/izidic",
@@ -37,10 +36,6 @@
     {
       "matchRepositoryNames": ["fgm/envrun", "fgm/container"],
       "schedule": ["before 3am on the first Saturday"]
-    },
-    {
-      "matchRepositoryNames": ["fgm/untilMongod"],
-      "schedule": ["before 3am on the 1st of the month"]
     },
     {
       "matchRepositoryNames": ["fgm/drupal_redis_stats", "fgm/izidic"],
