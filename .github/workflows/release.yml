@@ -34,7 +34,7 @@ jobs:
     # objects.githubusercontent.com are not in StepSecurity's observed baseline,
     # which reflects a warm module cache; a cold one reaches both.
     - name: Harden the runner (Block unexpected outbound calls)
-      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: block
         allowed-endpoints: >
@@ -61,10 +61,10 @@ jobs:
 
     # GoReleaser shells out to syft by name for the SBOMs.
     - name: Install syft
-      uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
 
     - name: Build a snapshot
-      uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
       with:
         # An exact version, not the action's default "~> v2" range:
         # a release must be built by the binary its config was verified against.
@@ -101,7 +101,7 @@ jobs:
       artifact-metadata: write
     steps:
     - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -116,10 +116,10 @@ jobs:
         go-version-file: go.mod
 
     - name: Install syft
-      uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
 
     - name: Build and publish the release
-      uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
       with:
         # An exact version, not the action's default "~> v2" range:
         # a release must be built by the binary its config was verified against.
