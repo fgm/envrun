@@ -132,6 +132,18 @@ Why the parsing lives in an importable package, what shape that package has,
 and what was declined on the way:
 [ADR-002](docs/adr/002-splitting-the-command-from-the-library.md).
 
+## Developing
+
+Standard Go tooling works directly: `make test`, `make lint`
+(`go tool staticcheck ./...`), and `make build`.
+Run `make demo` to watch `envrun` inject `.env.demo` into the `env` command.
+
+A [Dev Container](https://containers.dev) is also provided under
+[`.devcontainer/`](.devcontainer/README.md) for a reproducible,
+editor-agnostic environment (open it with VS Code, JetBrains/Gateway, or the
+`devcontainer` CLI). It is purely additive: native development is unaffected.
+
+
 ## Support
 
 - Non-security questions: use [Github issues](https://github.com/fgm/envrun/issues)
